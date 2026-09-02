@@ -10,6 +10,7 @@ import { grantMemberRole, revokeMemberRole } from "../../bot/services/memberServ
 import { warningLogMessage, warningRevokedMessage } from "../../bot/services/messageTemplates.js";
 import { getEffectiveChannels } from "../../settings/runtimeConfig.service.js";
 import { getPunishmentRolesConfig, findWarningRoleRule } from "../../settings/punishmentRoles.service.js";
+import { getRevokeNotificationsConfig } from "../../settings/revokeNotifications.service.js";
 import { assertOnDuty } from "../dutyGuard.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../../audit/audit.service.js";
 import { nowInDisplayZone } from "../../utils/timezone.js";
@@ -209,21 +210,24 @@ export async function revokeWarning(input: RevokeWarningInput): Promise<Warning>
     await revokeMemberRole(player.discordUserId, existing.punishmentRoleId);
   }
 
-  // Notification step — allowed to fail without affecting the revocation itself.
-  const channels = await getEffectiveChannels();
-  await sendChannelMessage(
-    channels.warningLog,
-    await warningRevokedMessage({
-      playerDiscordId: player?.discordUserId ?? null,
-      playerName: player?.playerName ?? "Unknown",
-      warningNumber: existing.warningNumber,
-      revokeReason: input.reason,
-      revokedAt: updated.revokedAt ?? new Date(),
-      staffDiscordId: input.actor.discordUserId,
-      staffName: input.actor.displayName,
-      staffRole: input.actor.discordRoleName ?? input.actor.roleName,
-    }),
-  );
+  // Notification step — toggleable in Settings, and allowed to fail without affecting the revocation itself.
+  const revokeNotifications = await getRevokeNotificationsConfig();
+  if (revokeNotifications.warningEnabled) {
+    const channels = await getEffectiveChannels();
+    await sendChannelMessage(
+      channels.warningLog,
+      await warningRevokedMessage({
+        playerDiscordId: player?.discordUserId ?? null,
+        playerName: player?.playerName ?? "Unknown",
+        warningNumber: existing.warningNumber,
+        revokeReason: input.reason,
+        revokedAt: updated.revokedAt ?? new Date(),
+        staffDiscordId: input.actor.discordUserId,
+        staffName: input.actor.displayName,
+        staffRole: input.actor.discordRoleName ?? input.actor.roleName,
+      }),
+    );
+  }
 
   return updated;
 }

@@ -24,8 +24,13 @@ import { listGuildTextChannels, listGuildRoles } from "../../bot/services/member
 import { enableTestMode, disableTestMode, getTestModeStatus, TestModeError } from "../../settings/testMode.service.js";
 import { wipeData, validateWipeSelection, DataWipeError, WIPE_CATEGORIES, WIPE_CATEGORY_LABELS } from "../../settings/dataWipe.service.js";
 import { getPunishmentRolesConfig, setPunishmentRolesConfig, PUNISHMENT_ROLES_KEY } from "../../settings/punishmentRoles.service.js";
+import {
+  getRevokeNotificationsConfig,
+  setRevokeNotificationsConfig,
+  REVOKE_NOTIFICATIONS_KEY,
+} from "../../settings/revokeNotifications.service.js";
 
-const RESERVED_SETTINGS_KEYS = new Set([CHANNEL_ROUTING_KEY, TEST_MODE_KEY, "message_templates", PUNISHMENT_ROLES_KEY]);
+const RESERVED_SETTINGS_KEYS = new Set([CHANNEL_ROUTING_KEY, TEST_MODE_KEY, "message_templates", PUNISHMENT_ROLES_KEY, REVOKE_NOTIFICATIONS_KEY]);
 
 export const settingsRouter = Router();
 
@@ -97,6 +102,40 @@ settingsRouter.put(
         metadata: { template: req.body.template },
       });
       res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// Whether revoking a warning/ban sends a Discord notification at all —
+// separate from the wording of that notification (the templates above).
+settingsRouter.get("/revoke-notifications", requirePermission(PERMISSIONS.MESSAGES_MANAGE), async (_req, res, next) => {
+  try {
+    const config = await getRevokeNotificationsConfig();
+    res.json({ config });
+  } catch (err) {
+    next(err);
+  }
+});
+
+settingsRouter.put(
+  "/revoke-notifications",
+  verifyCsrf,
+  requirePermission(PERMISSIONS.MESSAGES_MANAGE),
+  adminRateLimit,
+  validateBody(z.object({ warningEnabled: z.boolean(), banEnabled: z.boolean() })),
+  async (req, res, next) => {
+    try {
+      await setRevokeNotificationsConfig(req.body, req.auth!.discordUserId);
+      await recordAuditLog({
+        actorDiscordId: req.auth!.discordUserId,
+        actorName: req.auth!.displayName,
+        action: AUDIT_ACTIONS.SETTINGS_UPDATED,
+        targetType: "revoke_notifications",
+        metadata: req.body,
+      });
+      res.json({ ok: true, config: req.body });
     } catch (err) {
       next(err);
     }

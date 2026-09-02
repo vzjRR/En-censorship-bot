@@ -198,3 +198,8 @@ export interface PunishmentRolesConfig {
   warningRoles: PunishmentRoleRule[];
   banRole: { discordRoleId: string; discordRoleName: string } | null;
 }
+
+export interface RevokeNotificationsConfig {
+  warningEnabled: boolean;
+  banEnabled: boolean;
+}

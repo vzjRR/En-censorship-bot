@@ -10,6 +10,7 @@ import { grantMemberRole, revokeMemberRole } from "../../bot/services/memberServ
 import { banLogMessage, banRevokedMessage } from "../../bot/services/messageTemplates.js";
 import { getEffectiveChannels } from "../../settings/runtimeConfig.service.js";
 import { getPunishmentRolesConfig } from "../../settings/punishmentRoles.service.js";
+import { getRevokeNotificationsConfig } from "../../settings/revokeNotifications.service.js";
 import { assertOnDuty } from "../dutyGuard.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../../audit/audit.service.js";
 import { nowInDisplayZone } from "../../utils/timezone.js";
@@ -198,20 +199,23 @@ export async function revokeBan(input: RevokeBanInput): Promise<Ban> {
     await revokeMemberRole(existing.discordUserId, existing.punishmentRoleId);
   }
 
-  // Notification step — allowed to fail without affecting the revocation itself.
-  const channels = await getEffectiveChannels();
-  await sendChannelMessage(
-    channels.banLog,
-    await banRevokedMessage({
-      playerDiscordId: existing.discordUserId,
-      playerName: existing.playerName,
-      revokeReason: input.reason,
-      revokedAt: updated.revokedAt ?? new Date(),
-      staffDiscordId: input.actor.discordUserId,
-      staffName: input.actor.displayName,
-      staffRole: input.actor.discordRoleName ?? input.actor.roleName,
-    }),
-  );
+  // Notification step — toggleable in Settings, and allowed to fail without affecting the revocation itself.
+  const revokeNotifications = await getRevokeNotificationsConfig();
+  if (revokeNotifications.banEnabled) {
+    const channels = await getEffectiveChannels();
+    await sendChannelMessage(
+      channels.banLog,
+      await banRevokedMessage({
+        playerDiscordId: existing.discordUserId,
+        playerName: existing.playerName,
+        revokeReason: input.reason,
+        revokedAt: updated.revokedAt ?? new Date(),
+        staffDiscordId: input.actor.discordUserId,
+        staffName: input.actor.displayName,
+        staffRole: input.actor.discordRoleName ?? input.actor.roleName,
+      }),
+    );
+  }
 
   return updated;
 }
