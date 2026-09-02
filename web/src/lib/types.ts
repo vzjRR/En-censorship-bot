@@ -171,3 +171,30 @@ export interface TestModeState {
   enabledAt: string;
   enabledBy: string;
 }
+
+export interface DataWipeCategory {
+  key: string;
+  label: string;
+}
+
+export interface DataWipeResult {
+  categories: string[];
+  rowsDeleted: Record<string, number>;
+  testModeCleanupErrors: string[];
+}
+
+export interface GuildRole {
+  id: string;
+  name: string;
+}
+
+export interface PunishmentRoleRule {
+  warningNumber: number;
+  discordRoleId: string;
+  discordRoleName: string;
+}
+
+export interface PunishmentRolesConfig {
+  warningRoles: PunishmentRoleRule[];
+  banRole: { discordRoleId: string; discordRoleName: string } | null;
+}

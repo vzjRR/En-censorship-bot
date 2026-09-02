@@ -5,6 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import { MessagesPanel } from "./settings/MessagesPanel";
 import { ChannelsPanel } from "./settings/ChannelsPanel";
 import { TestModePanel } from "./settings/TestModePanel";
+import { PunishmentRolesPanel } from "./settings/PunishmentRolesPanel";
+import { DataWipePanel } from "./settings/DataWipePanel";
 import type { StaffRole } from "../lib/types";
 
 interface PlatformConfig {
@@ -129,7 +131,7 @@ function NewRoleForm({ onCreated }: { onCreated: () => void }) {
 }
 
 export function Settings() {
-  const { hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
   const canManageSettings = hasPermission("settings.manage");
   const [config, setConfig] = useState<PlatformConfig | null>(null);
   const [roles, setRoles] = useState<StaffRole[] | null>(null);
@@ -212,6 +214,8 @@ export function Settings() {
       {hasPermission("messages.manage") && <MessagesPanel />}
       {hasPermission("channels.manage") && <ChannelsPanel />}
       {hasPermission("test_mode.manage") && <TestModePanel />}
+      {user?.isPlatformOwner && <PunishmentRolesPanel />}
+      {user?.isPlatformOwner && <DataWipePanel />}
     </div>
   );
 }

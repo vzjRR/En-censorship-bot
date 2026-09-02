@@ -63,10 +63,56 @@ export function getRoleIdsFromSummary(summary: GuildMemberSummary): string[] {
   return summary.roleIds;
 }
 
+export interface RoleChangeResult {
+  ok: boolean;
+  error?: string;
+}
+
+/**
+ * Grants/removes a single Discord role on a guild member — used for the
+ * configurable "punishment role" applied while a warning/ban is active (see
+ * settings/punishmentRoles.service.ts). Never throws: like sendChannelMessage,
+ * this is a best-effort Discord side-effect that must never fail the
+ * warning/ban action itself.
+ */
+export async function grantMemberRole(discordUserId: string, roleId: string): Promise<RoleChangeResult> {
+  try {
+    const guild = await getModerationGuild();
+    const member = await guild.members.fetch(discordUserId).catch(() => null);
+    if (!member) return { ok: false, error: "Member not found in the moderation guild." };
+    await member.roles.add(roleId);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+export async function revokeMemberRole(discordUserId: string, roleId: string): Promise<RoleChangeResult> {
+  try {
+    const guild = await getModerationGuild();
+    const member = await guild.members.fetch(discordUserId).catch(() => null);
+    if (!member) return { ok: false, error: "Member not found in the moderation guild." };
+    await member.roles.remove(roleId);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export interface GuildTextChannelSummary {
   id: string;
   name: string;
   categoryName: string | null;
+}
+
+/** Lists every assignable role in the moderation guild, for the punishment-role picker in Settings. Excludes @everyone and Discord-managed (bot/integration) roles, which can't be manually assigned. */
+export async function listGuildRoles(): Promise<GuildRoleSummary[]> {
+  const guild = await getModerationGuild();
+  const roles = await guild.roles.fetch();
+  return roles
+    .filter((r) => r.name !== "@everyone" && !r.managed)
+    .map((r) => ({ id: r.id, name: r.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Lists text channels in the production moderation guild, for the channel-routing picker in Settings. */

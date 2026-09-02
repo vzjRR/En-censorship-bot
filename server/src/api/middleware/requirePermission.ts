@@ -14,3 +14,19 @@ export function requirePermission(permission: Permission) {
     next();
   };
 }
+
+/**
+ * Gates actions too destructive to delegate through the permission system
+ * (e.g. wiping data) — checks `req.auth.isPlatformOwner` directly rather
+ * than a grantable permission, since no role, including Manager, should be
+ * able to grant itself this. Must run after requireAuth.
+ */
+export function requirePlatformOwner(req: Request, res: Response, next: NextFunction) {
+  if (!req.auth) {
+    return res.status(401).json({ error: "unauthenticated" });
+  }
+  if (!req.auth.isPlatformOwner) {
+    return res.status(403).json({ error: "forbidden", message: "Only the platform owner can perform this action." });
+  }
+  next();
+}

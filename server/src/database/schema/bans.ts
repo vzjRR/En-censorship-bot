@@ -29,6 +29,8 @@ export const bans = pgTable(
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     discordMessageId: text("discord_message_id"),
     discordLogStatus: discordLogStatusEnum("discord_log_status").notNull().default("PENDING"),
+    /** Same purpose as warnings.punishment_role_id — see that column's comment. */
+    punishmentRoleId: text("punishment_role_id"),
     idempotencyKey: text("idempotency_key").unique(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

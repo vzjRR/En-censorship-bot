@@ -1,0 +1,14 @@
+{
+  "name": "ENCLAVE RP — Censorship Platform",
+  "short_name": "ENCLAVE Censorship",
+  "description": "ENCLAVE RP staff censorship/moderation platform.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0f1115",
+  "theme_color": "#5865f2",
+  "icons": [
+    { "src": "favicon.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "favicon.png", "sizes": "256x256", "type": "image/png", "purpose": "maskable" }
+  ]
+}

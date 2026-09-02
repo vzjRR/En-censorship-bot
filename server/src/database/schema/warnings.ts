@@ -27,6 +27,15 @@ export const warnings = pgTable(
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     discordMessageId: text("discord_message_id"),
     discordLogStatus: discordLogStatusEnum("discord_log_status").notNull().default("PENDING"),
+    /**
+     * Discord role granted to the player for the duration of this warning
+     * (e.g. "Warning 1"), per the configurable punishment-role mapping in
+     * Settings. Recorded here (not just looked up from the current config)
+     * so removal on expiry/revoke always removes the exact role granted,
+     * even if the mapping is edited afterward. Null when no rule matched or
+     * the player's Discord ID was unknown.
+     */
+    punishmentRoleId: text("punishment_role_id"),
     idempotencyKey: text("idempotency_key").unique(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

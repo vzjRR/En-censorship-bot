@@ -1,13 +1,15 @@
 import { eq, and, desc, lte, type SQL } from "drizzle-orm";
 import { db } from "../../database/client.js";
 import { warnings, warningEvidence, type Warning } from "../../database/schema/index.js";
-import { findOrCreatePlayer, countTotalWarningsForPlayer } from "../players/players.service.js";
+import { findOrCreatePlayer, findPlayerById, countTotalWarningsForPlayer } from "../players/players.service.js";
 import { resolveDuration, type DurationType } from "../duration.js";
 import { generateModerationCode } from "../../ids/idGenerator.js";
 import { storeEvidenceFiles, type EvidenceFileInput } from "../../evidence/storage.js";
 import { sendChannelMessage } from "../../bot/services/logService.js";
+import { grantMemberRole, revokeMemberRole } from "../../bot/services/memberService.js";
 import { warningLogMessage } from "../../bot/services/messageTemplates.js";
 import { getEffectiveChannels } from "../../settings/runtimeConfig.service.js";
+import { getPunishmentRolesConfig, findWarningRoleRule } from "../../settings/punishmentRoles.service.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../../audit/audit.service.js";
 import { nowInDisplayZone } from "../../utils/timezone.js";
 import type { AuthenticatedSessionUser } from "../../types/session.js";
@@ -137,11 +139,26 @@ export async function createWarning(input: CreateWarningInput, actor: Authentica
   // result instead of sending a second, redundant message.
   const logResult = combinedLogResult ?? (await sendChannelMessage(channels.warningLog, logContent));
 
+  // Configurable "punishment role" (e.g. "Warning 1") — best-effort, never
+  // blocks the warning itself. Only granted when the rule and the player's
+  // Discord ID are both known; the exact role ID granted is recorded on the
+  // row so it can be removed precisely on revoke/expiry later.
+  let punishmentRoleId: string | null = null;
+  if (player.discordUserId) {
+    const rolesConfig = await getPunishmentRolesConfig();
+    const rule = findWarningRoleRule(rolesConfig, warningNumber);
+    if (rule) {
+      const grant = await grantMemberRole(player.discordUserId, rule.discordRoleId);
+      if (grant.ok) punishmentRoleId = rule.discordRoleId;
+    }
+  }
+
   const [updated] = await db
     .update(warnings)
     .set({
       discordLogStatus: logResult.status,
       discordMessageId: logResult.messageId ?? null,
+      punishmentRoleId,
       updatedAt: new Date(),
     })
     .where(eq(warnings.id, created.id))
@@ -181,6 +198,11 @@ export async function revokeWarning(input: RevokeWarningInput): Promise<Warning>
     targetId: input.warningId,
     metadata: { reason: input.reason, warningCode: existing.warningCode },
   });
+
+  if (existing.punishmentRoleId) {
+    const player = await findPlayerById(existing.playerId);
+    if (player?.discordUserId) await revokeMemberRole(player.discordUserId, existing.punishmentRoleId);
+  }
 
   return updated;
 }
@@ -231,6 +253,11 @@ export async function expireOverdueWarnings(): Promise<Warning[]> {
       targetId: warning.id,
       metadata: { warningCode: warning.warningCode },
     });
+
+    if (warning.punishmentRoleId) {
+      const player = await findPlayerById(warning.playerId);
+      if (player?.discordUserId) await revokeMemberRole(player.discordUserId, warning.punishmentRoleId);
+    }
   }
 
   return expired;

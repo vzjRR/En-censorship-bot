@@ -25,6 +25,7 @@ export const AUDIT_ACTIONS = {
   TEST_MODE_DISABLED: "TEST_MODE_DISABLED",
   ACCESS_DENIED: "ACCESS_DENIED",
   LOGIN_SUCCESS: "LOGIN_SUCCESS",
+  DATA_WIPED: "DATA_WIPED",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

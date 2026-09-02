@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { requirePermission } from "../middleware/requirePermission.js";
+import { requirePermission, requirePlatformOwner } from "../middleware/requirePermission.js";
 import { verifyCsrf } from "../middleware/csrf.js";
 import { adminRateLimit } from "../middleware/rateLimit.js";
 import { validateBody, validateParams } from "../middleware/validate.js";
@@ -20,10 +20,12 @@ import {
   type TemplateKey,
 } from "../../settings/templates.service.js";
 import { getCustomChannelRouting, CHANNEL_ROUTING_KEY, TEST_MODE_KEY } from "../../settings/runtimeConfig.service.js";
-import { listGuildTextChannels } from "../../bot/services/memberService.js";
+import { listGuildTextChannels, listGuildRoles } from "../../bot/services/memberService.js";
 import { enableTestMode, disableTestMode, getTestModeStatus, TestModeError } from "../../settings/testMode.service.js";
+import { wipeData, validateWipeSelection, DataWipeError, WIPE_CATEGORIES, WIPE_CATEGORY_LABELS } from "../../settings/dataWipe.service.js";
+import { getPunishmentRolesConfig, setPunishmentRolesConfig, PUNISHMENT_ROLES_KEY } from "../../settings/punishmentRoles.service.js";
 
-const RESERVED_SETTINGS_KEYS = new Set([CHANNEL_ROUTING_KEY, TEST_MODE_KEY, "message_templates"]);
+const RESERVED_SETTINGS_KEYS = new Set([CHANNEL_ROUTING_KEY, TEST_MODE_KEY, "message_templates", PUNISHMENT_ROLES_KEY]);
 
 export const settingsRouter = Router();
 
@@ -199,6 +201,109 @@ settingsRouter.post(
       res.json(result);
     } catch (err) {
       if (err instanceof TestModeError) return next(new ApiError(400, "test_mode_error", err.message));
+      next(err);
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Punishment roles — the Discord role granted to a player while a warning
+// (per warning number) or ban of theirs is active. Owner-only, never
+// delegable through the permission system, per platform requirement.
+// ---------------------------------------------------------------------------
+const punishmentRolesSchema = z.object({
+  warningRoles: z
+    .array(
+      z.object({
+        warningNumber: z.number().int().min(1).max(999),
+        discordRoleId: z.string().regex(/^\d{15,25}$/),
+        discordRoleName: z.string().min(1).max(200),
+      }),
+    )
+    .max(50),
+  banRole: z
+    .object({
+      discordRoleId: z.string().regex(/^\d{15,25}$/),
+      discordRoleName: z.string().min(1).max(200),
+    })
+    .nullable(),
+});
+
+settingsRouter.get("/punishment-roles", requirePlatformOwner, async (_req, res, next) => {
+  try {
+    const [config, guildRoles] = await Promise.all([getPunishmentRolesConfig(), listGuildRoles().catch(() => [])]);
+    res.json({ config, guildRoles });
+  } catch (err) {
+    next(err);
+  }
+});
+
+settingsRouter.put(
+  "/punishment-roles",
+  verifyCsrf,
+  requirePlatformOwner,
+  adminRateLimit,
+  validateBody(punishmentRolesSchema),
+  async (req, res, next) => {
+    try {
+      const warningNumbers = req.body.warningRoles.map((r: { warningNumber: number }) => r.warningNumber);
+      if (new Set(warningNumbers).size !== warningNumbers.length) {
+        throw new ApiError(400, "duplicate_warning_number", "Each warning number can only have one role rule.");
+      }
+      await setPunishmentRolesConfig(req.body, req.auth!.discordUserId);
+      await recordAuditLog({
+        actorDiscordId: req.auth!.discordUserId,
+        actorName: req.auth!.displayName,
+        action: AUDIT_ACTIONS.SETTINGS_UPDATED,
+        targetType: "punishment_roles",
+        metadata: req.body,
+      });
+      res.json({ ok: true, config: req.body });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Data wipe — owner-only, never delegable through the permission system.
+// ---------------------------------------------------------------------------
+settingsRouter.get("/data-wipe/categories", requirePlatformOwner, (_req, res) => {
+  res.json({ categories: WIPE_CATEGORIES.map((key) => ({ key, label: WIPE_CATEGORY_LABELS[key] })) });
+});
+
+settingsRouter.post(
+  "/data-wipe",
+  verifyCsrf,
+  requirePlatformOwner,
+  adminRateLimit,
+  validateBody(
+    z.object({
+      categories: z.array(z.enum(WIPE_CATEGORIES)).min(1),
+      confirm: z.literal(true),
+    }),
+  ),
+  async (req, res, next) => {
+    try {
+      validateWipeSelection(req.body.categories);
+      const result = await wipeData({
+        categories: req.body.categories,
+        actor: { discordId: req.auth!.discordUserId, name: req.auth!.displayName },
+      });
+
+      // Written AFTER the wipe transaction commits so this entry survives
+      // even when "audit_logs" itself was one of the wiped categories.
+      await recordAuditLog({
+        actorDiscordId: req.auth!.discordUserId,
+        actorName: req.auth!.displayName,
+        action: AUDIT_ACTIONS.DATA_WIPED,
+        targetType: "data_wipe",
+        metadata: { categories: result.categories, rowsDeleted: result.rowsDeleted, testModeCleanupErrors: result.testModeCleanupErrors },
+      });
+
+      res.json(result);
+    } catch (err) {
+      if (err instanceof DataWipeError) return next(new ApiError(400, "data_wipe_error", err.message));
       next(err);
     }
   },

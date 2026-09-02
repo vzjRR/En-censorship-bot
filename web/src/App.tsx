@@ -15,6 +15,7 @@ import { Statistics } from "./pages/Statistics";
 import { AuditLogs } from "./pages/AuditLogs";
 import { Settings } from "./pages/Settings";
 import { NotAuthorized } from "./pages/NotAuthorized";
+import { InstallNotice } from "./components/InstallNotice";
 
 function FullScreenSpinner() {
   return (
@@ -53,8 +54,10 @@ export function App() {
   }
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
+    <>
+      <InstallNotice />
+      <Routes>
+        <Route element={<Layout />}>
         <Route index element={<DashboardHome />} />
         <Route
           path="staff"
@@ -130,7 +133,8 @@ export function App() {
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+        </Route>
+      </Routes>
+    </>
   );
 }

@@ -6,8 +6,10 @@ import { resolveDuration, type DurationType } from "../duration.js";
 import { generateModerationCode } from "../../ids/idGenerator.js";
 import { storeEvidenceFiles, type EvidenceFileInput } from "../../evidence/storage.js";
 import { sendChannelMessage } from "../../bot/services/logService.js";
+import { grantMemberRole, revokeMemberRole } from "../../bot/services/memberService.js";
 import { banLogMessage } from "../../bot/services/messageTemplates.js";
 import { getEffectiveChannels } from "../../settings/runtimeConfig.service.js";
+import { getPunishmentRolesConfig } from "../../settings/punishmentRoles.service.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../../audit/audit.service.js";
 import { nowInDisplayZone } from "../../utils/timezone.js";
 import type { AuthenticatedSessionUser } from "../../types/session.js";
@@ -129,11 +131,24 @@ export async function createBan(input: CreateBanInput, actor: AuthenticatedSessi
   // a second, redundant message.
   const logResult = combinedLogResult ?? (await sendChannelMessage(channels.banLog, logContent));
 
+  // Configurable "punishment role" (e.g. "Banned") — best-effort, never
+  // blocks the ban itself. The exact role ID granted is recorded on the row
+  // so it can be removed precisely on revoke/expiry later.
+  let punishmentRoleId: string | null = null;
+  if (player.discordUserId) {
+    const rolesConfig = await getPunishmentRolesConfig();
+    if (rolesConfig.banRole) {
+      const grant = await grantMemberRole(player.discordUserId, rolesConfig.banRole.discordRoleId);
+      if (grant.ok) punishmentRoleId = rolesConfig.banRole.discordRoleId;
+    }
+  }
+
   const [updated] = await db
     .update(bans)
     .set({
       discordLogStatus: logResult.status,
       discordMessageId: logResult.messageId ?? null,
+      punishmentRoleId,
       updatedAt: new Date(),
     })
     .where(eq(bans.id, created.id))
@@ -173,6 +188,10 @@ export async function revokeBan(input: RevokeBanInput): Promise<Ban> {
     targetId: input.banId,
     metadata: { reason: input.reason, banCode: existing.banCode },
   });
+
+  if (existing.punishmentRoleId && existing.discordUserId) {
+    await revokeMemberRole(existing.discordUserId, existing.punishmentRoleId);
+  }
 
   return updated;
 }
@@ -221,6 +240,10 @@ export async function expireOverdueBans(): Promise<Ban[]> {
       targetId: ban.id,
       metadata: { banCode: ban.banCode },
     });
+
+    if (ban.punishmentRoleId && ban.discordUserId) {
+      await revokeMemberRole(ban.discordUserId, ban.punishmentRoleId);
+    }
   }
 
   return expired;

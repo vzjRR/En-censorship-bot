@@ -5,9 +5,9 @@ describe("Fixed Discord message templates", () => {
   it("formats the staff login message with only the dynamic fields changing", async () => {
     const msg = await staffLoginMessage({ staffName: "Ahmed", staffRole: "Manager", loginTime: new Date("2026-08-18T10:35:00Z") });
     expect(msg).toContain("دخول الرقابة:");
-    expect(msg).toContain("الاسم: Ahmed");
-    expect(msg).toContain("الرتبة: Manager");
-    expect(msg).toMatch(/وقت الدخول: \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/);
+    expect(msg).toContain("**الاسم:** `Ahmed`");
+    expect(msg).toContain("**الرتبة:** `Manager`");
+    expect(msg).toMatch(/\*\*وقت الدخول:\*\* `\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}`/);
   });
 
   it("formats the staff logout message including optional notes", async () => {
@@ -18,7 +18,7 @@ describe("Fixed Discord message templates", () => {
       notes: "All clear",
     });
     expect(msg).toContain("خروج الرقابة:");
-    expect(msg).toContain("ملاحظات: All clear");
+    expect(msg).toContain("**ملاحظات:** `All clear`");
   });
 
   it("formats the warning message with the exact required layout, mentioning the player and staff (with their Discord role)", async () => {
@@ -35,12 +35,11 @@ describe("Fixed Discord message templates", () => {
       staffRole: "Head Staff",
     });
 
-    expect(msg).toContain("**يتم تسجيل الورنيج بالصيغة التالية:**");
-    expect(msg).toContain("اسم اللاعب: <@123456789012345678>");
-    expect(msg).toContain("رقم الورنيج: warning 1");
-    expect(msg).toContain("سبب الورنيج: RDM");
-    expect(msg).toContain("مدة الورنيج: 7 أيام");
-    expect(msg).toContain("اسم الرقابي: <@999999999999999999> (Head Staff)");
+    expect(msg).toContain("**اسم اللاعب:** `<@123456789012345678>`");
+    expect(msg).toContain("**رقم الورنيج:** `warning 1`");
+    expect(msg).toContain("**سبب الورنيج:** `RDM`");
+    expect(msg).toContain("**مدة الورنيج:** `7 أيام`");
+    expect(msg).toContain("**اسم الرقابي:** `<@999999999999999999> (Head Staff)`");
   });
 
   it("falls back to the player name when no Discord ID is known", async () => {
@@ -56,8 +55,8 @@ describe("Fixed Discord message templates", () => {
       staffDiscordId: "999999999999999999",
       staffRole: "Head Staff",
     });
-    expect(msg).toContain("اسم اللاعب: Fallback Name");
-    expect(msg).toContain("مدة الورنيج: دائم");
+    expect(msg).toContain("**اسم اللاعب:** `Fallback Name`");
+    expect(msg).toContain("**مدة الورنيج:** `دائم`");
   });
 
   it("formats the ban message with the exact required layout, mentioning the player and staff (with their Discord role)", async () => {
@@ -73,13 +72,13 @@ describe("Fixed Discord message templates", () => {
       staffRole: "Head Staff",
     });
 
-    expect(msg).toContain("player id : steam:1100001");
-    expect(msg).toContain("اللاعب: <@123456789012345678>");
-    expect(msg).toContain("band: 6 h");
-    expect(msg).toContain("Reason: تكويت في نص سناريو");
-    expect(msg).toMatch(/date: \d{1,2}-\d{1,2}-\d{2}/);
-    expect(msg).toContain("band time : 6 h");
-    expect(msg).toContain("censorhip name: <@999999999999999999> (Head Staff)");
+    expect(msg).toContain("**Player id:** `steam:1100001`");
+    expect(msg).toContain("**Player:** `<@123456789012345678>`");
+    expect(msg).toContain("**Band:** `6 h`");
+    expect(msg).toContain("**Reason:** `تكويت في نص سناريو`");
+    expect(msg).toMatch(/\*\*Date:\*\* `\d{1,2}-\d{1,2}-\d{2}`/);
+    expect(msg).toContain("**Band time:** `6 h`");
+    expect(msg).toContain("**Censorship name:** `<@999999999999999999> (Head Staff)`");
   });
 
   it("falls back to the player name in the ban mention when no Discord ID is known", async () => {
@@ -94,7 +93,7 @@ describe("Fixed Discord message templates", () => {
       staffDiscordId: "999999999999999999",
       staffRole: "Head Staff",
     });
-    expect(msg).toContain("اللاعب: No Discord Player");
+    expect(msg).toContain("**Player:** `No Discord Player`");
   });
 
   it("uses a custom template override when one has been saved, and reverts when cleared", async () => {
