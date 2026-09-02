@@ -27,9 +27,13 @@ sudo -u "$SERVICE_USER" git -C "$APP_DIR" pull --quiet
 ok "pulled"
 
 log "Installing dependencies and rebuilding"
-( cd "$APP_DIR" && npm ci --no-audit --no-fund >/dev/null && npm run build >/dev/null )
+# The frontend must be built knowing its own BASE_PATH — pull whatever is
+# actually configured in the live env file rather than assuming, so this
+# self-heals if that value is ever changed.
+site_base_path="$(grep -m1 '^BASE_PATH=' "$ENV_FILE" | cut -d= -f2- | tr -d '[:space:]')"
+( cd "$APP_DIR" && npm ci --no-audit --no-fund >/dev/null && VITE_BASE_PATH="$site_base_path" npm run build >/dev/null )
 chown -R "$SERVICE_USER:$SERVICE_USER" "$APP_DIR"
-ok "build complete"
+ok "build complete (frontend built for base path '$site_base_path')"
 
 log "Applying any new database migrations"
 sudo -u "$SERVICE_USER" bash -c "

@@ -34,6 +34,13 @@ REPO=https://github.com/vzjRR/En-censorship-bot
 BRANCH="${BRANCH:-claude/enclave-rp-moderation-platform-nzaf68}"
 DB_NAME=enclave_censorship
 DB_USER=enclave_censorship
+# Single source of truth for the sub-path this deploys under — used both
+# for the server's BASE_PATH (in the env file) and for the frontend build
+# below. They MUST match: the built HTML references its own assets and API
+# calls using this prefix, and if the build doesn't know about it, the
+# browser requests unprefixed paths that fall through to whatever else is
+# listening on the domain instead of 404ing obviously.
+SITE_BASE_PATH=/censorship
 
 log()  { printf '\033[1;35m==>\033[0m %s\n' "$1"; }
 warn() { printf '\033[1;33m  ! \033[0m%s\n' "$1"; }
@@ -128,8 +135,8 @@ fi
 # ------------------------------------------------------------------ build
 
 log "Installing dependencies and building (server + web)"
-( cd "$APP_DIR" && npm ci --no-audit --no-fund >/dev/null && npm run build >/dev/null )
-ok "build complete"
+( cd "$APP_DIR" && npm ci --no-audit --no-fund >/dev/null && VITE_BASE_PATH="$SITE_BASE_PATH" npm run build >/dev/null )
+ok "build complete (frontend built for base path $SITE_BASE_PATH)"
 
 # ----------------------------------------------------------------- port
 
@@ -194,7 +201,7 @@ else
 NODE_ENV=production
 PORT=$PORT_CHOSEN
 APP_BASE_URL=https://enclaverp.cc
-BASE_PATH=/censorship
+BASE_PATH=$SITE_BASE_PATH
 
 DATABASE_URL=$DATABASE_URL
 
