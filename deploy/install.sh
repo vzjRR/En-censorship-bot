@@ -41,6 +41,17 @@ ok()   { printf '\033[1;32m  \xE2\x9C\x93 \033[0m%s\n' "$1"; }
 
 [[ $EUID -eq 0 ]] || { echo "run with sudo" >&2; exit 1; }
 
+# Without these, `apt-get install` on Ubuntu 24.04 hangs at "Scanning
+# processes... Scanning candidates... Scanning linux images..." — that's
+# needrestart's post-install hook waiting on an interactive "restart these
+# services?" prompt with no way to answer it in a non-interactive script.
+# The store's own setup.sh sets the first of these for the same reason;
+# NEEDRESTART_MODE=a (automatic) is the belt-and-braces addition that stops
+# needrestart's own prompt specifically, since it doesn't always fully defer
+# to DEBIAN_FRONTEND on its own.
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
+
 # ------------------------------------------------------------------ node
 
 if ! command -v node >/dev/null; then
