@@ -19,7 +19,11 @@ authRouter.get("/discord/login", loginRateLimit, (req, res) => {
 
 authRouter.get("/discord/callback", loginRateLimit, async (req, res) => {
   const { code, state, error: oauthError } = req.query;
-  const frontendUrl = new URL("/login", env.APP_BASE_URL);
+  // Must include BASE_PATH when deployed under a sub-path (e.g.
+  // /censorship) — env.APP_BASE_URL is the bare origin, so building this
+  // without it sends every post-login redirect (success or error) to the
+  // domain root instead of back into the app.
+  const frontendUrl = new URL(`${env.BASE_PATH}/login`, env.APP_BASE_URL);
 
   if (oauthError) {
     frontendUrl.searchParams.set("authError", "discord_denied");
@@ -83,7 +87,8 @@ authRouter.get("/discord/callback", loginRateLimit, async (req, res) => {
           ipAddress: ip,
         });
 
-        const dest = new URL(returnTo, env.APP_BASE_URL);
+        // Same BASE_PATH consideration as frontendUrl above.
+        const dest = new URL(`${env.BASE_PATH}${returnTo}`, env.APP_BASE_URL);
         res.redirect(dest.toString());
       });
     });
