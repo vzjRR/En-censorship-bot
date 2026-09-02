@@ -5,13 +5,19 @@ import { findOrCreatePlayer } from "../players/players.service.js";
 import { resolveDuration, type DurationType } from "../duration.js";
 import { generateModerationCode } from "../../ids/idGenerator.js";
 import { storeEvidenceFiles, type EvidenceFileInput } from "../../evidence/storage.js";
-import { sendChannelMessage } from "../../bot/services/logService.js";
+import { sendChannelMessage, sendDirectMessage } from "../../bot/services/logService.js";
 import { grantMemberRole, revokeMemberRole } from "../../bot/services/memberService.js";
-import { banLogMessage, banRevokedMessage } from "../../bot/services/messageTemplates.js";
+import {
+  banLogMessage,
+  banRevokedMessage,
+  banPlayerDmMessage,
+  managerAlertBanMessage,
+} from "../../bot/services/messageTemplates.js";
 import { getEffectiveChannels } from "../../settings/runtimeConfig.service.js";
 import { getPunishmentRolesConfig } from "../../settings/punishmentRoles.service.js";
 import { getRevokeNotificationsConfig } from "../../settings/revokeNotifications.service.js";
 import { assertOnDuty } from "../dutyGuard.js";
+import { findActiveManager } from "../../staff/staff.service.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../../audit/audit.service.js";
 import { nowInDisplayZone } from "../../utils/timezone.js";
 import type { AuthenticatedSessionUser } from "../../types/session.js";
@@ -166,6 +172,36 @@ export async function createBan(input: CreateBanInput, actor: AuthenticatedSessi
         });
       }
     }
+  }
+
+  // Player + Manager notifications — best-effort DMs, never block the ban.
+  if (player.discordUserId) {
+    await sendDirectMessage(
+      player.discordUserId,
+      await banPlayerDmMessage({
+        playerName: player.playerName,
+        reason: input.reason,
+        issuedAt,
+        durationType,
+        durationHours,
+      }),
+    );
+  }
+  const manager = await findActiveManager();
+  if (manager && manager.discordUserId !== actor.discordUserId) {
+    await sendDirectMessage(
+      manager.discordUserId,
+      await managerAlertBanMessage({
+        playerDiscordId: player.discordUserId,
+        playerName: player.playerName,
+        reason: input.reason,
+        issuedAt,
+        durationType,
+        durationHours,
+        staffDiscordId: actor.discordUserId,
+        staffName: actor.displayName,
+      }),
+    );
   }
 
   const [updated] = await db

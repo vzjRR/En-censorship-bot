@@ -1,6 +1,8 @@
 import { formatDiscordDateTime, formatDiscordDate, formatBanShortDate } from "../../utils/timezone.js";
 import { formatDurationArabic, formatDurationShort, type DurationType } from "../../moderation/duration.js";
 import { getEffectiveTemplates, renderTemplate } from "../../settings/templates.service.js";
+import { formatPermissionsListAr } from "../../auth/permissions.js";
+import { env } from "../../config/env.js";
 
 /**
  * These templates default to the platform's fixed wording, but staff with
@@ -135,5 +137,95 @@ export async function banRevokedMessage(params: {
     staffMention: `<@${params.staffDiscordId}>`,
     staffName: params.staffName,
     staffRole: params.staffRole,
+  });
+}
+
+/** DM sent to a member the moment they're added as staff. */
+export async function staffWelcomeMessage(params: { staffName: string; roleName: string; permissions: string[] }): Promise<string> {
+  const templates = await getEffectiveTemplates();
+  return renderTemplate(templates.staff_welcome, {
+    staffName: params.staffName,
+    roleName: params.roleName,
+    capabilitiesList: formatPermissionsListAr(params.permissions),
+    platformUrl: `${env.APP_BASE_URL}${env.BASE_PATH}`,
+  });
+}
+
+/** DM sent to the player when they're warned (only when their Discord ID is known). */
+export async function warningPlayerDmMessage(params: {
+  playerName: string;
+  warningNumber: number;
+  reason: string;
+  issuedAt: Date;
+  durationType: DurationType;
+  durationHours: number | null;
+}): Promise<string> {
+  const templates = await getEffectiveTemplates();
+  return renderTemplate(templates.warning_player_dm, {
+    playerName: params.playerName,
+    warningNumber: String(params.warningNumber),
+    reason: params.reason,
+    duration: formatDurationArabic(params.durationType, params.durationHours),
+    issuedDate: formatDiscordDate(params.issuedAt),
+  });
+}
+
+/** DM sent to the player when they're banned (only when their Discord ID is known). */
+export async function banPlayerDmMessage(params: {
+  playerName: string;
+  reason: string;
+  issuedAt: Date;
+  durationType: DurationType;
+  durationHours: number | null;
+}): Promise<string> {
+  const templates = await getEffectiveTemplates();
+  return renderTemplate(templates.ban_player_dm, {
+    playerName: params.playerName,
+    reason: params.reason,
+    duration: formatDurationShort(params.durationType, params.durationHours),
+    date: formatBanShortDate(params.issuedAt),
+  });
+}
+
+/** DM sent to whoever holds the Manager role whenever a warning is issued. */
+export async function managerAlertWarningMessage(params: {
+  playerDiscordId?: string | null;
+  playerName: string;
+  warningNumber: number;
+  reason: string;
+  staffDiscordId: string;
+  staffName: string;
+}): Promise<string> {
+  const templates = await getEffectiveTemplates();
+  const playerRef = params.playerDiscordId ? `<@${params.playerDiscordId}>` : params.playerName;
+  return renderTemplate(templates.manager_alert_warning, {
+    playerRef,
+    warningNumber: String(params.warningNumber),
+    reason: params.reason,
+    staffMention: `<@${params.staffDiscordId}>`,
+    staffName: params.staffName,
+  });
+}
+
+/** DM sent to whoever holds the Manager role whenever a ban is issued. */
+export async function managerAlertBanMessage(params: {
+  playerDiscordId?: string | null;
+  playerName: string;
+  reason: string;
+  issuedAt: Date;
+  durationType: DurationType;
+  durationHours: number | null;
+  staffDiscordId: string;
+  staffName: string;
+}): Promise<string> {
+  const templates = await getEffectiveTemplates();
+  const playerMention = params.playerDiscordId ? `<@${params.playerDiscordId}>` : params.playerName;
+  return renderTemplate(templates.manager_alert_ban, {
+    playerMention,
+    playerName: params.playerName,
+    reason: params.reason,
+    duration: formatDurationShort(params.durationType, params.durationHours),
+    staffMention: `<@${params.staffDiscordId}>`,
+    staffName: params.staffName,
   });
 }

@@ -53,3 +53,27 @@ export async function sendChannelMessage(channelId: string, content: string, fil
     return { status: "FAILED", error };
   }
 }
+
+/**
+ * Sends a Discord direct message (DM) to a single user and NEVER throws —
+ * used for the staff welcome message, and the player/manager notifications
+ * on warning/ban (see moderation/warnings, moderation/bans, staff.service).
+ * Fails gracefully (status FAILED) if the bot can't reach them: DMs closed,
+ * no longer sharing a server, blocked the bot, etc.
+ */
+export async function sendDirectMessage(discordUserId: string, content: string): Promise<SendLogResult> {
+  try {
+    if (!isBotReady()) {
+      return { status: "FAILED", error: "Discord bot is not connected." };
+    }
+
+    const user = await botClient.users.fetch(discordUserId);
+    const message = await user.send({ content });
+
+    return { status: "SENT", messageId: message.id };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    console.error(`[bot] failed to send DM to ${discordUserId}:`, error);
+    return { status: "FAILED", error };
+  }
+}

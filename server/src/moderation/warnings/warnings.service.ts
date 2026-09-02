@@ -5,13 +5,19 @@ import { findOrCreatePlayer, findPlayerById, countTotalWarningsForPlayer } from 
 import { resolveDuration, type DurationType } from "../duration.js";
 import { generateModerationCode } from "../../ids/idGenerator.js";
 import { storeEvidenceFiles, type EvidenceFileInput } from "../../evidence/storage.js";
-import { sendChannelMessage } from "../../bot/services/logService.js";
+import { sendChannelMessage, sendDirectMessage } from "../../bot/services/logService.js";
 import { grantMemberRole, revokeMemberRole } from "../../bot/services/memberService.js";
-import { warningLogMessage, warningRevokedMessage } from "../../bot/services/messageTemplates.js";
+import {
+  warningLogMessage,
+  warningRevokedMessage,
+  warningPlayerDmMessage,
+  managerAlertWarningMessage,
+} from "../../bot/services/messageTemplates.js";
 import { getEffectiveChannels } from "../../settings/runtimeConfig.service.js";
 import { getPunishmentRolesConfig, findWarningRoleRule } from "../../settings/punishmentRoles.service.js";
 import { getRevokeNotificationsConfig } from "../../settings/revokeNotifications.service.js";
 import { assertOnDuty } from "../dutyGuard.js";
+import { findActiveManager } from "../../staff/staff.service.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../../audit/audit.service.js";
 import { nowInDisplayZone } from "../../utils/timezone.js";
 import type { AuthenticatedSessionUser } from "../../types/session.js";
@@ -170,6 +176,35 @@ export async function createWarning(input: CreateWarningInput, actor: Authentica
         });
       }
     }
+  }
+
+  // Player + Manager notifications — best-effort DMs, never block the warning.
+  if (player.discordUserId) {
+    await sendDirectMessage(
+      player.discordUserId,
+      await warningPlayerDmMessage({
+        playerName: player.playerName,
+        warningNumber,
+        reason: input.reason,
+        issuedAt,
+        durationType,
+        durationHours,
+      }),
+    );
+  }
+  const manager = await findActiveManager();
+  if (manager && manager.discordUserId !== actor.discordUserId) {
+    await sendDirectMessage(
+      manager.discordUserId,
+      await managerAlertWarningMessage({
+        playerDiscordId: player.discordUserId,
+        playerName: player.playerName,
+        warningNumber,
+        reason: input.reason,
+        staffDiscordId: actor.discordUserId,
+        staffName: actor.displayName,
+      }),
+    );
   }
 
   const [updated] = await db

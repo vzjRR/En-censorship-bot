@@ -1,6 +1,17 @@
 import { getSetting, setSetting } from "./settings.service.js";
 
-export type TemplateKey = "staff_login" | "staff_logout" | "warning" | "ban" | "warning_revoked" | "ban_revoked";
+export type TemplateKey =
+  | "staff_login"
+  | "staff_logout"
+  | "warning"
+  | "ban"
+  | "warning_revoked"
+  | "ban_revoked"
+  | "staff_welcome"
+  | "warning_player_dm"
+  | "ban_player_dm"
+  | "manager_alert_warning"
+  | "manager_alert_ban";
 
 export interface TemplateDefinition {
   key: TemplateKey;
@@ -112,6 +123,79 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
       "**Reason:** `{{revokeReason}}`",
       "**By:** {{staffMention}}",
       "**Date:** `{{revokedDate}}`",
+    ].join("\n"),
+  },
+  staff_welcome: {
+    key: "staff_welcome",
+    label: "Staff Welcome (DM)",
+    description: "Sent as a Discord direct message to a member the moment they're added as staff.",
+    placeholders: ["staffName", "roleName", "capabilitiesList", "platformUrl"],
+    default: [
+      "**مرحبًا بك في طاقم الرقابة، {{staffName}}!**",
+      "",
+      "تم إضافتك برتبة: **{{roleName}}**",
+      "",
+      "**بصلاحيتك تقدر:**",
+      "{{capabilitiesList}}",
+      "",
+      "**رابط المنصة:** {{platformUrl}}",
+      "",
+      "تقدر تستخدم المنصة من متصفح الكمبيوتر مباشرة، لكن يُفضّل تثبيتها كتطبيق:",
+      "• **من الكمبيوتر:** افتح الرابط بمتصفح Chrome/Edge، وبتلاقي أيقونة تثبيت بجانب شريط العنوان.",
+      "• **من الهاتف:** افتح الرابط، ثم من قائمة المتصفح اختر \"Add to Home Screen\" / \"تثبيت التطبيق\" — التثبيت **إلزامي** لاستخدام المنصة من الهاتف.",
+    ].join("\n"),
+  },
+  warning_player_dm: {
+    key: "warning_player_dm",
+    label: "Warning Notice (DM to player)",
+    description: "Sent as a Discord direct message to the player when they're warned (only if their Discord ID is known).",
+    placeholders: ["playerName", "warningNumber", "reason", "duration", "issuedDate"],
+    default: [
+      "**تم تسجيل تحذير (ورنينج) بحقك**",
+      "",
+      "**رقم الورنيج:** warning {{warningNumber}}",
+      "**السبب:** {{reason}}",
+      "**المدة:** {{duration}}",
+      "**التاريخ:** {{issuedDate}}",
+    ].join("\n"),
+  },
+  ban_player_dm: {
+    key: "ban_player_dm",
+    label: "Ban Notice (DM to player)",
+    description: "Sent as a Discord direct message to the player when they're banned (only if their Discord ID is known).",
+    placeholders: ["playerName", "reason", "duration", "date"],
+    default: [
+      "**تم حظرك (باند)**",
+      "",
+      "**السبب:** {{reason}}",
+      "**المدة:** {{duration}}",
+      "**التاريخ:** {{date}}",
+    ].join("\n"),
+  },
+  manager_alert_warning: {
+    key: "manager_alert_warning",
+    label: "Manager Alert — Warning (DM)",
+    description: "Sent as a Discord direct message to whoever holds the Manager role whenever a warning is issued.",
+    placeholders: ["playerRef", "warningNumber", "reason", "staffMention", "staffName"],
+    default: [
+      "**تنبيه: تم إصدار ورنينج**",
+      "**اللاعب:** {{playerRef}}",
+      "**رقم الورنيج:** warning {{warningNumber}}",
+      "**السبب:** {{reason}}",
+      "**بواسطة:** {{staffMention}}",
+    ].join("\n"),
+  },
+  manager_alert_ban: {
+    key: "manager_alert_ban",
+    label: "Manager Alert — Ban (DM)",
+    description: "Sent as a Discord direct message to whoever holds the Manager role whenever a ban is issued.",
+    placeholders: ["playerMention", "playerName", "reason", "duration", "staffMention", "staffName"],
+    default: [
+      "**تنبيه: تم إصدار باند**",
+      "**اللاعب:** {{playerMention}}",
+      "**السبب:** {{reason}}",
+      "**المدة:** {{duration}}",
+      "**بواسطة:** {{staffMention}}",
     ].join("\n"),
   },
 };

@@ -6,6 +6,11 @@ import {
   banLogMessage,
   warningRevokedMessage,
   banRevokedMessage,
+  staffWelcomeMessage,
+  warningPlayerDmMessage,
+  banPlayerDmMessage,
+  managerAlertWarningMessage,
+  managerAlertBanMessage,
 } from "../src/bot/services/messageTemplates.js";
 
 describe("Fixed Discord message templates", () => {
@@ -138,6 +143,74 @@ describe("Fixed Discord message templates", () => {
     expect(msg).toContain("**Player:** Appealed Player");
     expect(msg).toContain("**Reason:** `Appeal accepted`");
     expect(msg).toContain("**By:** <@999999999999999999>");
+  });
+
+  it("formats the staff welcome DM with role and a permissions summary", async () => {
+    const msg = await staffWelcomeMessage({
+      staffName: "New Staff",
+      roleName: "Staff",
+      permissions: ["dashboard.view", "warnings.create", "bans.create"],
+    });
+    expect(msg).toContain("New Staff");
+    expect(msg).toContain("**Staff**");
+    expect(msg).toContain("إصدار تحذير");
+    expect(msg).toContain("إصدار باند");
+    expect(msg).toMatch(/http/);
+  });
+
+  it("formats the warning player DM", async () => {
+    const msg = await warningPlayerDmMessage({
+      playerName: "Player",
+      warningNumber: 1,
+      reason: "RDM",
+      issuedAt: new Date("2026-08-18T09:00:00Z"),
+      durationType: "7_days",
+      durationHours: 168,
+    });
+    expect(msg).toContain("warning 1");
+    expect(msg).toContain("RDM");
+    expect(msg).toContain("7 أيام");
+  });
+
+  it("formats the ban player DM", async () => {
+    const msg = await banPlayerDmMessage({
+      playerName: "Player",
+      reason: "Cheating",
+      issuedAt: new Date("2026-08-31T12:00:00Z"),
+      durationType: "6_hours",
+      durationHours: 6,
+    });
+    expect(msg).toContain("Cheating");
+    expect(msg).toContain("6 h");
+  });
+
+  it("formats the Manager alert for a warning, mentioning the player and staff", async () => {
+    const msg = await managerAlertWarningMessage({
+      playerDiscordId: "123456789012345678",
+      playerName: "Player",
+      warningNumber: 3,
+      reason: "VDM",
+      staffDiscordId: "999999999999999999",
+      staffName: "Staff Name",
+    });
+    expect(msg).toContain("<@123456789012345678>");
+    expect(msg).toContain("warning 3");
+    expect(msg).toContain("<@999999999999999999>");
+  });
+
+  it("formats the Manager alert for a ban, mentioning the player and staff", async () => {
+    const msg = await managerAlertBanMessage({
+      playerDiscordId: null,
+      playerName: "No Discord Player",
+      reason: "Cheating",
+      issuedAt: new Date(),
+      durationType: "PERMANENT",
+      durationHours: null,
+      staffDiscordId: "999999999999999999",
+      staffName: "Staff Name",
+    });
+    expect(msg).toContain("No Discord Player");
+    expect(msg).toContain("<@999999999999999999>");
   });
 
   it("uses a custom template override when one has been saved, and reverts when cleared", async () => {

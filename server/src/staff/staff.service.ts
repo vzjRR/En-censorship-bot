@@ -3,6 +3,8 @@ import { db } from "../database/client.js";
 import { staffMembers, staffRoles, type StaffMember } from "../database/schema/index.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../audit/audit.service.js";
 import { ensurePlatformOwnerRole } from "./roles.service.js";
+import { sendDirectMessage } from "../bot/services/logService.js";
+import { staffWelcomeMessage } from "../bot/services/messageTemplates.js";
 
 /** A rejected business rule (duplicate staff member, singleton role already held) — not a server bug, so routes map this to a 400 instead of a generic 500. */
 export class StaffValidationError extends Error {}
@@ -130,7 +132,19 @@ export async function addStaffMember(input: AddStaffInput): Promise<StaffMemberW
     metadata: { discordUserId: input.discordUserId, roleId: input.roleId },
   });
 
-  return attachRole(member);
+  const withRole = await attachRole(member);
+
+  // Best-effort welcome DM — never blocks adding the staff member itself.
+  await sendDirectMessage(
+    input.discordUserId,
+    await staffWelcomeMessage({
+      staffName: input.displayName,
+      roleName: withRole.role.name,
+      permissions: withRole.role.permissions,
+    }),
+  );
+
+  return withRole;
 }
 
 export interface UpdateStaffInput {
@@ -291,6 +305,18 @@ export async function ensurePlatformOwnerStaffRecord(params: {
     .returning();
 
   return attachRole(created);
+}
+
+/** The single active holder of the singleton "Manager" role, if any — used to notify the Manager whenever a warning/ban is issued. */
+export async function findActiveManager(): Promise<StaffMemberWithRole | null> {
+  const managerRole = await db.query.staffRoles.findFirst({ where: eq(staffRoles.key, "manager") });
+  if (!managerRole) return null;
+
+  const member = await db.query.staffMembers.findFirst({
+    where: and(eq(staffMembers.roleId, managerRole.id), eq(staffMembers.status, "ACTIVE")),
+  });
+  if (!member) return null;
+  return attachRole(member);
 }
 
 export async function listOrphanedStaff(): Promise<StaffMemberWithRole[]> {

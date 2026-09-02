@@ -39,6 +39,36 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
 export const ALL_PERMISSIONS: Permission[] = Object.values(PERMISSIONS);
 
+/** Human-readable (Arabic) description of what each permission lets someone do — used in the staff welcome DM. */
+export const PERMISSION_LABELS_AR: Record<string, string> = {
+  [PERMISSIONS.DASHBOARD_VIEW]: "عرض لوحة التحكم الرئيسية",
+  [PERMISSIONS.STAFF_VIEW]: "عرض قائمة الطاقم",
+  [PERMISSIONS.STAFF_MANAGE]: "إضافة/إزالة الطاقم وتغيير رتبهم",
+  [PERMISSIONS.DUTY_TOGGLE]: "تسجيل دخول وخروج الرقابة",
+  [PERMISSIONS.DUTY_VIEW_ALL]: "عرض كل الرقابة الحاليين بالخدمة",
+  [PERMISSIONS.WARNINGS_VIEW]: "عرض التحذيرات (الورنينج)",
+  [PERMISSIONS.WARNINGS_CREATE]: "إصدار تحذير",
+  [PERMISSIONS.WARNINGS_REVOKE]: "إلغاء تحذير",
+  [PERMISSIONS.BANS_VIEW]: "عرض الحظر (الباند)",
+  [PERMISSIONS.BANS_CREATE]: "إصدار باند",
+  [PERMISSIONS.BANS_REVOKE]: "إلغاء باند",
+  [PERMISSIONS.PLAYERS_VIEW]: "البحث عن اللاعبين وعرض ملفاتهم",
+  [PERMISSIONS.STATISTICS_VIEW]: "عرض الإحصائيات",
+  [PERMISSIONS.AUDIT_VIEW]: "عرض سجل النشاطات",
+  [PERMISSIONS.SETTINGS_MANAGE]: "إدارة إعدادات المنصة الكاملة",
+  [PERMISSIONS.MESSAGES_MANAGE]: "تعديل نصوص الرسائل المرسلة لديسكورد",
+  [PERMISSIONS.CHANNELS_MANAGE]: "إدارة توجيه القنوات",
+  [PERMISSIONS.TEST_MODE_MANAGE]: "تفعيل/تعطيل وضع الاختبار",
+  [PERMISSIONS.DATA_EXPORT]: "تصدير البيانات (CSV)",
+};
+
+/** Bullet-list Arabic summary of what a set of permissions lets someone do — used in the staff welcome DM. */
+export function formatPermissionsListAr(permissions: string[]): string {
+  const labels = permissions.map((p) => PERMISSION_LABELS_AR[p]).filter((l): l is string => Boolean(l));
+  if (labels.length === 0) return "لا توجد صلاحيات محددة حاليًا.";
+  return labels.map((l) => `• ${l}`).join("\n");
+}
+
 /** Reserved staff_roles.key for the auto-provisioned Platform Owner bookkeeping record. */
 export const PLATFORM_OWNER_ROLE_KEY = "platform_owner";
 
