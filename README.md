@@ -255,6 +255,15 @@ manager, or log in as the owner and use Staff → Add Staff).
 
 ## 11. Production Deployment
 
+**Deploying to the existing enclaverp.cc box (Oracle Cloud, systemd, Caddy —
+no Docker)?** Use `deploy/install.sh` and follow `deploy/README.md` instead
+of the generic steps below — it matches the same conventions as
+`enclave-home` and `enclave-tickets-bot` (its own systemd unit, its own
+service user, an auto-picked port, an `/etc/*.env` file) and prints the
+exact Caddy snippet to add for `/censorship`.
+
+Generic manual deployment (any Linux host with Node + Postgres):
+
 ```bash
 npm install
 npm run build                 # builds both server (tsc) and web (vite)

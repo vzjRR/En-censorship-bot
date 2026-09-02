@@ -20,6 +20,11 @@ export const sessionMiddleware = session({
     httpOnly: true,
     secure: env.NODE_ENV === "production",
     sameSite: "lax",
+    // Scope the cookie to our own mount path when deployed under a
+    // sub-path (e.g. /censorship) behind a shared reverse proxy — without
+    // this it defaults to "/" and would also be sent on requests to
+    // unrelated apps sharing the same domain.
+    path: env.BASE_PATH || "/",
     maxAge: 1000 * 60 * 60 * 12, // 12 hours
   },
 });

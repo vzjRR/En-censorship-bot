@@ -1,0 +1,73 @@
+# systemd unit for the ENCLAVE RP moderation platform (enclaverp.cc/censorship).
+#
+# Separate from the store, homepage and tickets bot units on purpose — same
+# reasoning as enclave-home's unit: a crash, a deploy, or an OOM here must
+# not take any of the others down, and vice versa.
+#
+# Layout:
+#
+#   /opt/enclave-censorship/app     the checkout (server/ + web/)
+#   /etc/enclave-censorship.env     configuration (Discord + database)
+#
+# One process handles the Discord bot, the expiration worker, and the HTTP
+# API/dashboard together — see server/src/main.ts.
+#
+#   sudo install -m 644 deploy/enclave-censorship.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now enclave-censorship
+
+[Unit]
+Description=ENCLAVE RP moderation platform (enclaverp.cc/censorship)
+Documentation=https://github.com/vzjRR/En-censorship-bot
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=enclave-censorship
+Group=enclave-censorship
+WorkingDirectory=/opt/enclave-censorship/app/server
+EnvironmentFile=/etc/enclave-censorship.env
+ExecStart=/usr/bin/node dist/main.js
+
+Restart=always
+RestartSec=3
+
+# Same ceiling reasoning as enclave-home's unit: keep a runaway here from
+# starving Postgres, sshd, or the other Enclave services on this 1 GB box.
+MemoryHigh=256M
+MemoryMax=384M
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# Only the local evidence-upload fallback (EVIDENCE_STORAGE_DRIVER=local,
+# off by default — the default driver stores evidence on Discord's CDN
+# instead) needs a writable directory.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/enclave-censorship/app/server/uploads
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+
+# Outbound to Discord, and to Postgres over the loopback interface.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# MemoryDenyWriteExecute stays off — same V8 JIT reason as enclave-home's
+# unit. With it on, Node aborts before running a line of application code.
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=enclave-censorship
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+# Route for the moderation platform, to be merged into the EXISTING
+# enclaverp.cc block that enclave-home's installer already added to
+# /etc/caddy/Caddyfile — see deploy/README.md for the exact merge steps.
+# install.sh copies this file with 127.0.0.1:3002 already substituted for
+# whatever port it actually picked.
+#
+# Uses `handle` (not `handle_path`): the app expects to SEE the /censorship
+# prefix on every request — it's how BASE_PATH-aware routing and the OAuth2
+# redirect URI line up (see server/src/config/env.ts). handle_path would
+# strip the prefix before forwarding and break both.
+
+handle /censorship* {
+	reverse_proxy 127.0.0.1:3002 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+	}
+}
