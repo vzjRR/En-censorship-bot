@@ -13,7 +13,9 @@ describe("Fixed Discord message templates", () => {
     const msg = await staffLoginMessage({ staffName: "Ahmed", staffRole: "Manager", loginTime: new Date("2026-08-18T10:35:00Z") });
     expect(msg).toContain("دخول الرقابة:");
     expect(msg).toContain("**الاسم:** `Ahmed`");
-    expect(msg).toContain("**الرتبة:** `Manager`");
+    // No backticks — staffRole is a role MENTION when called from
+    // sessions.service.ts, and Discord never parses mentions inside inline code.
+    expect(msg).toContain("**الرتبة:** Manager");
     expect(msg).toMatch(/\*\*وقت الدخول:\*\* `\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}`/);
   });
 
@@ -42,11 +44,11 @@ describe("Fixed Discord message templates", () => {
       staffRole: "Head Staff",
     });
 
-    expect(msg).toContain("**اسم اللاعب:** `<@123456789012345678>`");
+    expect(msg).toContain("**اسم اللاعب:** <@123456789012345678>");
     expect(msg).toContain("**رقم الورنيج:** `warning 1`");
     expect(msg).toContain("**سبب الورنيج:** `RDM`");
     expect(msg).toContain("**مدة الورنيج:** `7 أيام`");
-    expect(msg).toContain("**اسم الرقابي:** `<@999999999999999999> (Head Staff)`");
+    expect(msg).toContain("**اسم الرقابي:** <@999999999999999999> (`Head Staff`)");
   });
 
   it("falls back to the player name when no Discord ID is known", async () => {
@@ -62,7 +64,7 @@ describe("Fixed Discord message templates", () => {
       staffDiscordId: "999999999999999999",
       staffRole: "Head Staff",
     });
-    expect(msg).toContain("**اسم اللاعب:** `Fallback Name`");
+    expect(msg).toContain("**اسم اللاعب:** Fallback Name");
     expect(msg).toContain("**مدة الورنيج:** `دائم`");
   });
 
@@ -117,7 +119,7 @@ describe("Fixed Discord message templates", () => {
       staffName: "Staff Name",
       staffRole: "Head Staff",
     });
-    expect(msg).toContain("**اسم اللاعب:** `<@123456789012345678>`");
+    expect(msg).toContain("**اسم اللاعب:** <@123456789012345678>");
     expect(msg).toContain("**رقم الورنيج:** `warning 1`");
     expect(msg).toContain("**سبب الإلغاء:** `Issued in error`");
     expect(msg).toContain("**بواسطة:** <@999999999999999999> `Staff Name` (Head Staff)");

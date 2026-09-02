@@ -27,7 +27,9 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
       "**__دخول الرقابة:__**",
       "",
       "**الاسم:** `{{staffName}}`",
-      "**الرتبة:** `{{staffRole}}`",
+      // staffRole is a Discord ROLE MENTION (<@&id>) — never wrap a mention
+      // in backticks, Discord doesn't parse markdown/mentions inside inline code.
+      "**الرتبة:** {{staffRole}}",
       "**وقت الدخول:** `{{loginTime}}`",
     ].join("\n"),
   },
@@ -40,7 +42,9 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
       "**~~خروج الرقابة:~~**",
       "",
       "**الاسم:** `{{staffName}}`",
-      "**الرتبة:** `{{staffRole}}`",
+      // staffRole is a Discord ROLE MENTION (<@&id>) — never wrap a mention
+      // in backticks, Discord doesn't parse markdown/mentions inside inline code.
+      "**الرتبة:** {{staffRole}}",
       "**وقت الخروج:** `{{logoutTime}}`",
       "**ملاحظات:** `{{notes}}`",
     ].join("\n"),
@@ -51,12 +55,14 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
     description: "Posted to the warning log channel whenever a warning is created.",
     placeholders: ["playerRef", "warningNumber", "reason", "issuedDate", "duration", "staffName", "staffMention", "staffRole"],
     default: [
-      "**اسم اللاعب:** `{{playerRef}}`",
+      // playerRef/staffMention are Discord mentions — never wrapped in
+      // backticks, Discord doesn't parse mentions inside inline code.
+      "**اسم اللاعب:** {{playerRef}}",
       "**رقم الورنيج:** `warning {{warningNumber}}`",
       "**سبب الورنيج:** `{{reason}}`",
       "**تاريخ الإصدار:** `{{issuedDate}}`",
       "**مدة الورنيج:** `{{duration}}`",
-      "**اسم الرقابي:** `{{staffMention}} ({{staffRole}})`",
+      "**اسم الرقابي:** {{staffMention}} (`{{staffRole}}`)",
     ].join("\n"),
   },
   ban: {
@@ -82,7 +88,7 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
     placeholders: ["playerRef", "warningNumber", "revokeReason", "staffMention", "staffName", "staffRole", "revokedDate"],
     default: [
       "**تم إلغاء الورنيج**",
-      "**اسم اللاعب:** `{{playerRef}}`",
+      "**اسم اللاعب:** {{playerRef}}",
       "**رقم الورنيج:** `warning {{warningNumber}}`",
       "**سبب الإلغاء:** `{{revokeReason}}`",
       "**بواسطة:** {{staffMention}} `{{staffName}}` ({{staffRole}})",
