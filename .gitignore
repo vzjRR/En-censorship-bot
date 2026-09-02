@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Env files - never commit real secrets
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+web/dist/
+server/dist/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.sqlite
+*.sqlite3
+/pgdata/
+
+# Uploads (local evidence cache, not committed)
+server/uploads/
+
+# Misc
+.turbo/
+*.tsbuildinfo

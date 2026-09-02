@@ -1,0 +1,22 @@
+{
+  "name": "enclave-rp-moderation-platform",
+  "private": true,
+  "version": "1.0.0",
+  "description": "ENCLAVE RP Moderation Control Platform - Discord bot, OAuth2 dashboard and moderation API",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev -w server",
+    "dev:web": "npm run dev -w web",
+    "build": "npm run build -w server && npm run build -w web",
+    "build:server": "npm run build -w server",
+    "build:web": "npm run build -w web",
+    "test": "npm run test -w server",
+    "lint": "npm run lint -w server && npm run lint -w web",
+    "db:generate": "npm run db:generate -w server",
+    "db:migrate": "npm run db:migrate -w server"
+  },
+  "license": "MIT"
+}

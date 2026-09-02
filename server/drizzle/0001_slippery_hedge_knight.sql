@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS "staff_sessions_one_active_per_staff_idx" ON "staff_sessions" USING btree ("staff_id") WHERE "staff_sessions"."status" = 'ACTIVE';
