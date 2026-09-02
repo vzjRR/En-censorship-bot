@@ -11,6 +11,19 @@ import { discordConfig } from "../../config/discordConfig.js";
 import { DISPLAY_TIMEZONE } from "../../utils/timezone.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../../audit/audit.service.js";
 import { isBotReady } from "../../bot/client.js";
+import { ApiError } from "../middleware/errorHandler.js";
+import {
+  TEMPLATE_DEFINITIONS,
+  getTemplateOverrides,
+  setTemplateOverride,
+  resetTemplateOverride,
+  type TemplateKey,
+} from "../../settings/templates.service.js";
+import { getCustomChannelRouting, CHANNEL_ROUTING_KEY, TEST_MODE_KEY } from "../../settings/runtimeConfig.service.js";
+import { listGuildTextChannels } from "../../bot/services/memberService.js";
+import { enableTestMode, disableTestMode, getTestModeStatus, TestModeError } from "../../settings/testMode.service.js";
+
+const RESERVED_SETTINGS_KEYS = new Set([CHANNEL_ROUTING_KEY, TEST_MODE_KEY, "message_templates"]);
 
 export const settingsRouter = Router();
 
@@ -37,6 +50,166 @@ settingsRouter.get("/", requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (_
   }
 });
 
+// ---------------------------------------------------------------------------
+// Message templates ("Edit the messages")
+// ---------------------------------------------------------------------------
+settingsRouter.get("/templates", requirePermission(PERMISSIONS.MESSAGES_MANAGE), async (_req, res, next) => {
+  try {
+    const overrides = await getTemplateOverrides();
+    const templates = Object.values(TEMPLATE_DEFINITIONS).map((def) => ({
+      key: def.key,
+      label: def.label,
+      description: def.description,
+      placeholders: def.placeholders,
+      default: def.default,
+      current: overrides[def.key] ?? def.default,
+      isCustom: Boolean(overrides[def.key]),
+    }));
+    res.json({ templates });
+  } catch (err) {
+    next(err);
+  }
+});
+
+settingsRouter.put(
+  "/templates/:key",
+  verifyCsrf,
+  requirePermission(PERMISSIONS.MESSAGES_MANAGE),
+  adminRateLimit,
+  validateParams(z.object({ key: z.enum(Object.keys(TEMPLATE_DEFINITIONS) as [TemplateKey, ...TemplateKey[]]) })),
+  validateBody(z.object({ template: z.string().max(2000) })),
+  async (req, res, next) => {
+    try {
+      const key = req.params.key as TemplateKey;
+      if (req.body.template.trim() === "") {
+        await resetTemplateOverride(key, req.auth!.discordUserId);
+      } else {
+        await setTemplateOverride(key, req.body.template, req.auth!.discordUserId);
+      }
+      await recordAuditLog({
+        actorDiscordId: req.auth!.discordUserId,
+        actorName: req.auth!.displayName,
+        action: AUDIT_ACTIONS.MESSAGE_TEMPLATE_UPDATED,
+        targetType: "message_template",
+        targetId: key,
+        metadata: { template: req.body.template },
+      });
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Channel routing ("choose which channel to send what")
+// ---------------------------------------------------------------------------
+settingsRouter.get("/channels", requirePermission(PERMISSIONS.CHANNELS_MANAGE), async (_req, res, next) => {
+  try {
+    const [routing, guildChannels] = await Promise.all([
+      getCustomChannelRouting(),
+      listGuildTextChannels().catch(() => []),
+    ]);
+    res.json({
+      routing: {
+        staffLog: routing?.staffLog || discordConfig.channels.staffLog,
+        warningLog: routing?.warningLog || discordConfig.channels.warningLog,
+        banLog: routing?.banLog || discordConfig.channels.banLog,
+      },
+      defaults: discordConfig.channels,
+      guildChannels,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const channelRoutingSchema = z.object({
+  staffLog: z.string().regex(/^\d{15,25}$/).optional(),
+  warningLog: z.string().regex(/^\d{15,25}$/).optional(),
+  banLog: z.string().regex(/^\d{15,25}$/).optional(),
+});
+
+settingsRouter.put(
+  "/channels",
+  verifyCsrf,
+  requirePermission(PERMISSIONS.CHANNELS_MANAGE),
+  adminRateLimit,
+  validateBody(channelRoutingSchema),
+  async (req, res, next) => {
+    try {
+      const existing = await getCustomChannelRouting();
+      const updated = { ...existing, ...req.body };
+      await setSetting(CHANNEL_ROUTING_KEY, updated, req.auth!.discordUserId);
+      await recordAuditLog({
+        actorDiscordId: req.auth!.discordUserId,
+        actorName: req.auth!.displayName,
+        action: AUDIT_ACTIONS.CHANNEL_ROUTING_UPDATED,
+        targetType: "channel_routing",
+        metadata: updated,
+      });
+      res.json({ ok: true, routing: updated });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Test Mode
+// ---------------------------------------------------------------------------
+settingsRouter.get("/test-mode", requirePermission(PERMISSIONS.TEST_MODE_MANAGE), async (_req, res, next) => {
+  try {
+    const state = await getTestModeStatus();
+    res.json({ state: state ?? null });
+  } catch (err) {
+    next(err);
+  }
+});
+
+settingsRouter.post(
+  "/test-mode/enable",
+  verifyCsrf,
+  requirePermission(PERMISSIONS.TEST_MODE_MANAGE),
+  adminRateLimit,
+  validateBody(z.object({ guildId: z.string().regex(/^\d{15,25}$/, "Invalid Discord server ID") })),
+  async (req, res, next) => {
+    try {
+      const state = await enableTestMode(req.body.guildId, { discordId: req.auth!.discordUserId, name: req.auth!.displayName });
+      res.status(201).json({ state });
+    } catch (err) {
+      if (err instanceof TestModeError) return next(new ApiError(400, "test_mode_error", err.message));
+      next(err);
+    }
+  },
+);
+
+settingsRouter.post(
+  "/test-mode/disable",
+  verifyCsrf,
+  requirePermission(PERMISSIONS.TEST_MODE_MANAGE),
+  adminRateLimit,
+  validateBody(z.object({ cleanup: z.boolean().optional() })),
+  async (req, res, next) => {
+    try {
+      const result = await disableTestMode(
+        { discordId: req.auth!.discordUserId, name: req.auth!.displayName },
+        req.body.cleanup ?? true,
+      );
+      res.json(result);
+    } catch (err) {
+      if (err instanceof TestModeError) return next(new ApiError(400, "test_mode_error", err.message));
+      next(err);
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Generic settings key/value writer — registered LAST. It matches any
+// single-segment PUT path (e.g. PUT /some-key), so every more specific route
+// above (PUT /channels, PUT /templates/:key, ...) must be registered before
+// this one or Express would route requests meant for them here instead.
+// ---------------------------------------------------------------------------
 settingsRouter.put(
   "/:key",
   verifyCsrf,
@@ -46,6 +219,13 @@ settingsRouter.put(
   validateBody(z.object({ value: z.unknown() })),
   async (req, res, next) => {
     try {
+      if (RESERVED_SETTINGS_KEYS.has(req.params.key)) {
+        throw new ApiError(
+          400,
+          "reserved_key",
+          `"${req.params.key}" is managed through its dedicated endpoint (Messages, Channels, or Test Mode in Settings), not the generic settings writer.`,
+        );
+      }
       await setSetting(req.params.key, req.body.value, req.auth!.discordUserId);
       await recordAuditLog({
         actorDiscordId: req.auth!.discordUserId,

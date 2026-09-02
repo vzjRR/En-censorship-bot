@@ -126,6 +126,21 @@ Design choices worth calling out:
 - Append-only audit log for every sensitive action, with CSV export.
 - CSV export for warnings, bans, staff sessions, and audit logs
   (`data.export` permission).
+- **Editable message templates** (Settings → Messages, `messages.manage`
+  permission): the wording of the staff login/logout, warning, and ban
+  Discord messages can be rewritten from the dashboard, with a fixed set of
+  `{{placeholders}}` per message type. "Reset to Default" restores the
+  original required wording at any time.
+- **Configurable channel routing** (Settings → Channels, `channels.manage`
+  permission): pick which Discord channel each message type is sent to from
+  a live list of the server's text channels, instead of being locked to
+  whatever `.env` says.
+- **Test Mode** (Settings → Test Mode, `test_mode.manage` permission): points
+  staff-login/warning/ban messages at three auto-created channels in a
+  separate sandbox Discord server, so the whole logging flow can be
+  exercised without touching production channels. Disabling it deletes
+  everything it created there. Dashboard login/permissions are completely
+  unaffected by Test Mode — only where automated messages get sent changes.
 
 ## 4. Requirements
 
@@ -297,20 +312,65 @@ VPS or Oracle Cloud instance) rather than the domain root:
 
 Permissions are plain strings stored per-role in `staff_roles.permissions`
 (editable from Settings by anyone with `settings.manage`, by default only
-Manager). Defaults:
+Manager). Every permission below can be granted to any role independently —
+e.g. hand a trusted Deputy Manager `messages.manage` without also giving
+them `staff.manage` or `settings.manage`.
+
+| Permission | Grants |
+|---|---|
+| `staff.view` / `staff.manage` | View staff list / add, remove, edit, change roles |
+| `duty.toggle` | Log in/out of duty |
+| `warnings.view` / `.create` / `.revoke` | View / issue / revoke warnings |
+| `bans.view` / `.create` / `.revoke` | View / issue / revoke bans |
+| `players.view` | Player search + profiles |
+| `statistics.view` | Statistics dashboard |
+| `audit.view` | Audit log |
+| `settings.manage` | Staff roles/permissions editor, generic system settings |
+| `messages.manage` | Edit Discord message wording (Settings → Messages) |
+| `channels.manage` | Choose which channel each message type is sent to (Settings → Channels) |
+| `test_mode.manage` | Enable/disable Test Mode (Settings → Test Mode) |
+| `data.export` | CSV export on warnings/bans/staff sessions/audit logs |
+
+Defaults:
 
 | Role | Key permissions |
 |---|---|
 | **Platform Owner** | Every permission, always — enforced server-side, independent of the database |
-| **Manager** | Everything: staff management, warnings/bans (create+revoke), players, statistics, audit, settings, export |
-| **Deputy Manager** | Warnings/bans (create+revoke), players, statistics, audit, view staff — no staff management or settings |
-| **Staff** | Duty toggle, warnings/bans (create only, no revoke), players — no staff management, no revoke, no settings |
+| **Manager** | Everything above |
+| **Deputy Manager** | Warnings/bans (create+revoke), players, statistics, audit, view staff — no staff/settings/messages/channels/test-mode management |
+| **Staff** | Duty toggle, warnings/bans (create only, no revoke), players — nothing administrative |
 
 New levels (e.g. "Senior Staff", "Trial Staff") can be added from Settings
 with any combination of the permission set in
 `server/src/auth/permissions.ts`.
 
-## 15. Testing
+## 15. Test Mode
+
+Settings → Test Mode lets staff with `test_mode.manage` try out the full
+staff-login/warning/ban messaging flow against a sandbox Discord server
+without touching the real moderation channels.
+
+**Enable**: enter a Discord server ID (the bot must already be a member of
+that server) and click Enable Test Mode. The platform creates a category
+("ENCLAVE TEST MODE") with three text channels
+(`mod-staff-log-test`, `mod-warnings-test`, `mod-bans-test`) in that server,
+and from then on every staff-login/logout, warning, and ban message is sent
+there instead of the production channels — nothing else changes: dashboard
+login, staff verification, and permissions all keep using the real
+`DISCORD_GUILD_ID` guild the whole time, so Test Mode can never lock anyone
+out of the dashboard.
+
+**Disable**: "Disable & Clean Up Test Mode" deletes the category and all
+three channels it created, then switches message routing back to whatever
+was configured before (custom channel routing if you'd set one, otherwise
+the `.env` defaults). Any cleanup step that fails (e.g. a channel already
+deleted manually, or the bot lost access) is reported back rather than
+silently ignored — Test Mode still turns off either way.
+
+The bot needs **Manage Channels** permission in the test server for both
+steps to work.
+
+## 16. Testing
 
 ```bash
 cd server
@@ -339,7 +399,7 @@ forgery/escalation attempts, login rate limiting, and OAuth state validation.
 Fixed Discord message templates (staff login/logout, warning, ban) are
 locked in with dedicated format tests.
 
-## 16. Troubleshooting
+## 17. Troubleshooting
 
 - **"Discord bot failed to start"** on boot: check `DISCORD_BOT_TOKEN` and
   that the Server Members Intent is enabled in the Developer Portal. The API
@@ -357,7 +417,7 @@ locked in with dedicated format tests.
   a new client, replicate this — cookies alone are not sufficient for
   mutating requests.
 
-## 17. Security
+## 18. Security
 
 - OAuth2 `state` is generated and validated server-side per login attempt.
 - Sessions are server-side (Postgres-backed via `connect-pg-simple`),
@@ -381,7 +441,7 @@ locked in with dedicated format tests.
 - No secret ever appears in source control; `.env.example` documents every
   variable without real values, and `.gitignore` excludes `.env*`.
 
-## 18. Backup
+## 19. Backup
 
 Back up the Postgres database on your usual schedule
 (`pg_dump`/managed-provider snapshots). Evidence stored via the `discord`
@@ -390,7 +450,7 @@ stored via the `local` driver lives under `server/uploads` and should be
 included in your backup/volume strategy if you rely on it beyond local
 development.
 
-## 19. Database Migrations
+## 20. Database Migrations
 
 Schema changes go through Drizzle: edit `server/src/database/schema/*.ts`,
 run `npm run db:generate` (writes a new SQL file under `server/drizzle`),
@@ -398,7 +458,7 @@ review it, commit it, and run `npm run db:migrate` in each environment.
 Migrations are tracked in Drizzle's own migrations table, so re-running
 `db:migrate` is always safe (idempotent).
 
-## 20. Known Limitations / Future Improvements
+## 21. Known Limitations / Future Improvements
 
 - Discord role sync is checked at login and re-checked from the database's
   cached `discord_role_ids` on every request; it does not currently poll
@@ -415,3 +475,6 @@ Migrations are tracked in Drizzle's own migrations table, so re-running
   few thousand rows) rather than true streaming — sufficient for this
   platform's expected volume, but worth revisiting if the server accumulates
   a very large moderation history.
+- Test Mode is a single global on/off switch (one sandbox server active at a
+  time), not per-admin — if two admins both try to use it simultaneously,
+  the second `enable` call is rejected until the first disables it.

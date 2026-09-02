@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../lib/api";
 import { Card, StatusBadge, Button, Input, Field, ErrorBanner, Spinner } from "../components/ui";
+import { useAuth } from "../context/AuthContext";
+import { MessagesPanel } from "./settings/MessagesPanel";
+import { ChannelsPanel } from "./settings/ChannelsPanel";
+import { TestModePanel } from "./settings/TestModePanel";
 import type { StaffRole } from "../lib/types";
 
 interface PlatformConfig {
@@ -28,6 +32,9 @@ const ALL_PERMISSIONS = [
   "statistics.view",
   "audit.view",
   "settings.manage",
+  "messages.manage",
+  "channels.manage",
+  "test_mode.manage",
   "data.export",
 ];
 
@@ -122,6 +129,7 @@ function NewRoleForm({ onCreated }: { onCreated: () => void }) {
 }
 
 export function Settings() {
+  const { hasPermission } = useAuth();
   const [config, setConfig] = useState<PlatformConfig | null>(null);
   const [roles, setRoles] = useState<StaffRole[] | null>(null);
 
@@ -181,8 +189,8 @@ export function Settings() {
           </div>
         </dl>
         <p className="mt-3 text-xs text-slate-600">
-          These values are configured via environment variables on the server and cannot be changed here — see the README's
-          Environment Variables section.
+          The Discord IDs above are the environment defaults. Use Channels below to route individual message types
+          elsewhere, or Test Mode to redirect everything to a sandbox server.
         </p>
       </Card>
 
@@ -194,6 +202,10 @@ export function Settings() {
           <NewRoleForm onCreated={loadRoles} />
         </div>
       </Card>
+
+      {hasPermission("messages.manage") && <MessagesPanel />}
+      {hasPermission("channels.manage") && <ChannelsPanel />}
+      {hasPermission("test_mode.manage") && <TestModePanel />}
     </div>
   );
 }

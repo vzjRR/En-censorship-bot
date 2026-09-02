@@ -3,7 +3,7 @@ import { db } from "../database/client.js";
 import { staffSessions, type StaffSession } from "../database/schema/index.js";
 import { staffLoginMessage, staffLogoutMessage } from "../bot/services/messageTemplates.js";
 import { sendChannelMessage } from "../bot/services/logService.js";
-import { discordConfig } from "../config/discordConfig.js";
+import { getEffectiveChannels } from "../settings/runtimeConfig.service.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../audit/audit.service.js";
 import type { AuthenticatedSessionUser } from "../types/session.js";
 
@@ -72,9 +72,10 @@ export async function startDuty(
     throw err;
   }
 
+  const channels = await getEffectiveChannels();
   const result = await sendChannelMessage(
-    discordConfig.channels.staffLog,
-    staffLoginMessage({ staffName: user.displayName, staffRole: user.roleName, loginTime: created.loginTime }),
+    channels.staffLog,
+    await staffLoginMessage({ staffName: user.displayName, staffRole: user.roleName, loginTime: created.loginTime }),
   );
 
   if (result.status === "SENT" && result.messageId) {
@@ -113,9 +114,10 @@ export async function endDuty(
     throw new DutyConflictError("You are not currently on duty.");
   }
 
+  const channels = await getEffectiveChannels();
   const result = await sendChannelMessage(
-    discordConfig.channels.staffLog,
-    staffLogoutMessage({ staffName: user.displayName, staffRole: user.roleName, logoutTime, notes }),
+    channels.staffLog,
+    await staffLogoutMessage({ staffName: user.displayName, staffRole: user.roleName, logoutTime, notes }),
   );
 
   if (result.status === "SENT" && result.messageId) {

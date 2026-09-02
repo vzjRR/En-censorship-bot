@@ -28,6 +28,9 @@ export const PERMISSIONS = {
   AUDIT_VIEW: "audit.view",
 
   SETTINGS_MANAGE: "settings.manage",
+  MESSAGES_MANAGE: "messages.manage",
+  CHANNELS_MANAGE: "channels.manage",
+  TEST_MODE_MANAGE: "test_mode.manage",
 
   DATA_EXPORT: "data.export",
 } as const;
@@ -67,6 +70,9 @@ export const DEFAULT_ROLE_SEEDS: Array<{
       PERMISSIONS.STATISTICS_VIEW,
       PERMISSIONS.AUDIT_VIEW,
       PERMISSIONS.SETTINGS_MANAGE,
+      PERMISSIONS.MESSAGES_MANAGE,
+      PERMISSIONS.CHANNELS_MANAGE,
+      PERMISSIONS.TEST_MODE_MANAGE,
       PERMISSIONS.DATA_EXPORT,
     ],
   },

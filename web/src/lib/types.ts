@@ -137,3 +137,34 @@ export const DURATION_OPTIONS_BAN = [
 ];
 
 export const WARNING_REASON_PRESETS = ["RDM", "VDM", "Fail RP", "Toxicity", "Power Gaming"];
+
+export interface MessageTemplate {
+  key: "staff_login" | "staff_logout" | "warning" | "ban";
+  label: string;
+  description: string;
+  placeholders: string[];
+  default: string;
+  current: string;
+  isCustom: boolean;
+}
+
+export interface ChannelRouting {
+  staffLog: string;
+  warningLog: string;
+  banLog: string;
+}
+
+export interface GuildTextChannel {
+  id: string;
+  name: string;
+  categoryName: string | null;
+}
+
+export interface TestModeState {
+  enabled: boolean;
+  guildId: string;
+  categoryId: string | null;
+  channels: ChannelRouting;
+  enabledAt: string;
+  enabledBy: string;
+}

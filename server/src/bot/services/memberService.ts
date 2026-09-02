@@ -1,3 +1,4 @@
+import { ChannelType } from "discord.js";
 import { getModerationGuild } from "../client.js";
 
 export interface GuildMemberSummary {
@@ -51,4 +52,20 @@ export async function searchGuildMembers(query: string, limit = 10): Promise<Gui
 
 export function getRoleIdsFromSummary(summary: GuildMemberSummary): string[] {
   return summary.roleIds;
+}
+
+export interface GuildTextChannelSummary {
+  id: string;
+  name: string;
+  categoryName: string | null;
+}
+
+/** Lists text channels in the production moderation guild, for the channel-routing picker in Settings. */
+export async function listGuildTextChannels(): Promise<GuildTextChannelSummary[]> {
+  const guild = await getModerationGuild();
+  const channels = await guild.channels.fetch();
+  return channels
+    .filter((c): c is NonNullable<typeof c> => c !== null && c.type === ChannelType.GuildText)
+    .map((c) => ({ id: c.id, name: c.name, categoryName: c.parent?.name ?? null }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }

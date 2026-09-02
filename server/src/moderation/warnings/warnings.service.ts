@@ -7,7 +7,7 @@ import { generateModerationCode } from "../../ids/idGenerator.js";
 import { storeEvidenceFiles, type EvidenceFileInput } from "../../evidence/storage.js";
 import { sendChannelMessage } from "../../bot/services/logService.js";
 import { warningLogMessage } from "../../bot/services/messageTemplates.js";
-import { discordConfig } from "../../config/discordConfig.js";
+import { getEffectiveChannels } from "../../settings/runtimeConfig.service.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../../audit/audit.service.js";
 import { nowInDisplayZone } from "../../utils/timezone.js";
 import type { AuthenticatedSessionUser } from "../../types/session.js";
@@ -54,8 +54,9 @@ export async function createWarning(input: CreateWarningInput, actor: Authentica
 
   // Evidence is a precondition of the record, not the notification step —
   // upload/validate it before writing anything to the database.
+  const channels = await getEffectiveChannels();
   const evidenceRecords = await storeEvidenceFiles(input.evidenceFiles, {
-    channelId: discordConfig.channels.warningLog,
+    channelId: channels.warningLog,
     caption: `Evidence for warning #${warningNumber} — ${player.playerName}`,
   });
 
@@ -115,8 +116,8 @@ export async function createWarning(input: CreateWarningInput, actor: Authentica
 
   // Notification step — allowed to fail without affecting the created record.
   const logResult = await sendChannelMessage(
-    discordConfig.channels.warningLog,
-    warningLogMessage({
+    channels.warningLog,
+    await warningLogMessage({
       playerDiscordId: player.discordUserId,
       playerName: player.playerName,
       warningNumber,

@@ -28,10 +28,20 @@ export function isBotReady(): boolean {
 }
 
 export async function getModerationGuild() {
+  return getGuildById(discordConfig.guildId);
+}
+
+/**
+ * Fetches an arbitrary guild by ID via the bot. Used for the moderation
+ * guild (fixed, from DISCORD_GUILD_ID) and, separately, for Test Mode's
+ * one-off channel-management calls against whatever guild ID an admin
+ * points it at — see settings/testMode.service.ts.
+ */
+export async function getGuildById(guildId: string) {
   if (!botClient.isReady()) {
     throw new Error("Discord bot is not connected yet.");
   }
-  const guild = botClient.guilds.cache.get(discordConfig.guildId);
-  if (guild) return guild;
-  return botClient.guilds.fetch(discordConfig.guildId);
+  const cached = botClient.guilds.cache.get(guildId);
+  if (cached) return cached;
+  return botClient.guilds.fetch(guildId);
 }

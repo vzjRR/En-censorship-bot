@@ -7,7 +7,7 @@ import { generateModerationCode } from "../../ids/idGenerator.js";
 import { storeEvidenceFiles, type EvidenceFileInput } from "../../evidence/storage.js";
 import { sendChannelMessage } from "../../bot/services/logService.js";
 import { banLogMessage } from "../../bot/services/messageTemplates.js";
-import { discordConfig } from "../../config/discordConfig.js";
+import { getEffectiveChannels } from "../../settings/runtimeConfig.service.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../../audit/audit.service.js";
 import { nowInDisplayZone } from "../../utils/timezone.js";
 import type { AuthenticatedSessionUser } from "../../types/session.js";
@@ -48,8 +48,9 @@ export async function createBan(input: CreateBanInput, actor: AuthenticatedSessi
   const issuedAt = new Date();
   const { durationType, durationHours, expiresAt } = resolveDuration(input.durationType, issuedAt, input.customDurationHours);
 
+  const channels = await getEffectiveChannels();
   const evidenceRecords = await storeEvidenceFiles(input.evidenceFiles, {
-    channelId: discordConfig.channels.banLog,
+    channelId: channels.banLog,
     caption: `Evidence for ban — ${player.playerName}`,
   });
 
@@ -108,8 +109,8 @@ export async function createBan(input: CreateBanInput, actor: AuthenticatedSessi
   });
 
   const logResult = await sendChannelMessage(
-    discordConfig.channels.banLog,
-    banLogMessage({
+    channels.banLog,
+    await banLogMessage({
       fivemIdentifier: input.fivemIdentifier,
       playerDiscordId: player.discordUserId,
       playerName: player.playerName,
