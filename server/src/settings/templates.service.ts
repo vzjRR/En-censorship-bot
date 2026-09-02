@@ -72,13 +72,17 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
     // identifierLine is the fully-formed "Player id" line — it's already
     // empty when staff didn't type a FiveM ID (see banLogMessage), so the
     // template just needs to reference it, not decide whether to show it.
+    // playerMention/staffMention already show the resolved Discord name
+    // themselves once rendered (falling back to plain text when no Discord
+    // ID is known) — playerName/staffName are still available as
+    // placeholders but the default doesn't repeat them alongside the mention.
     placeholders: ["identifierLine", "identifier", "playerMention", "playerName", "duration", "reason", "date", "staffMention", "staffName", "staffRole"],
     default: [
-      "{{identifierLine}}**Player:** {{playerMention}} `{{playerName}}`",
+      "{{identifierLine}}**Player:** {{playerMention}}",
       "**Reason:** `{{reason}}`",
       "**Date:** `{{date}}`",
       "**Band time:** `{{duration}}`",
-      "**Censorship name:** {{staffMention}} `{{staffName}}` ({{staffRole}})",
+      "**Censorship name:** {{staffMention}} ({{staffRole}})",
     ].join("\n"),
   },
   warning_revoked: {
@@ -91,7 +95,7 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
       "**اسم اللاعب:** {{playerRef}}",
       "**رقم الورنيج:** `warning {{warningNumber}}`",
       "**سبب الإلغاء:** `{{revokeReason}}`",
-      "**بواسطة:** {{staffMention}} `{{staffName}}` ({{staffRole}})",
+      "**بواسطة:** {{staffMention}} ({{staffRole}})",
       "**التاريخ:** `{{revokedDate}}`",
     ].join("\n"),
   },
@@ -102,9 +106,9 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
     placeholders: ["playerMention", "playerName", "revokeReason", "staffMention", "staffName", "staffRole", "revokedDate"],
     default: [
       "**Ban Revoked**",
-      "**Player:** {{playerMention}} `{{playerName}}`",
+      "**Player:** {{playerMention}}",
       "**Reason:** `{{revokeReason}}`",
-      "**By:** {{staffMention}} `{{staffName}}` ({{staffRole}})",
+      "**By:** {{staffMention}} ({{staffRole}})",
       "**Date:** `{{revokedDate}}`",
     ].join("\n"),
   },

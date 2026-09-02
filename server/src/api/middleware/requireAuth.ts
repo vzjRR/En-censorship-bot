@@ -16,7 +16,26 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 
   if (sessionUser.isPlatformOwner || sessionUser.discordUserId === discordConfig.platformOwnerId) {
-    req.auth = { ...sessionUser, isPlatformOwner: true, permissions: ALL_PERMISSIONS as Permission[] };
+    // Keep the owner's chosen Discord role fresh too — same as the staff
+    // branch below — so re-picking it in Staff → Edit Discord Role takes
+    // effect immediately instead of waiting for the owner to log in again.
+    // Never blocks access: a broken/unreachable staff table just means the
+    // session's last-known value is kept.
+    let discordRoleName = sessionUser.discordRoleName;
+    let discordRoleId = sessionUser.discordRoleId;
+    if (sessionUser.staffId) {
+      try {
+        const ownerStaff = await findStaffById(sessionUser.staffId);
+        if (ownerStaff) {
+          discordRoleName = ownerStaff.discordRoleName;
+          discordRoleId = ownerStaff.discordRoleId;
+        }
+      } catch (err) {
+        console.error("[auth] failed to refresh platform owner's Discord role:", err);
+      }
+    }
+    req.session.user = { ...sessionUser, isPlatformOwner: true, permissions: ALL_PERMISSIONS as Permission[], discordRoleName, discordRoleId };
+    req.auth = req.session.user;
     return next();
   }
 

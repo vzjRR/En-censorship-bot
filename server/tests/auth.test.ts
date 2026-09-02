@@ -45,6 +45,35 @@ describe("Authentication & Authorization", () => {
     expect(res.status).toBe(200);
   });
 
+  it("refreshes the platform owner's chosen Discord role on every request, not just at login", async () => {
+    const app = buildApp();
+    const ownerRoleId = await seedOwnerRole();
+    const owner = await createStaffMember(ownerRoleId, {
+      discordUserId: "1303195553068482591",
+      discordRoleId: "111111111111111111",
+      discordRoleName: "Old Role",
+    });
+    const agent = request.agent(app);
+    const user = sessionUserFor(owner, "platform_owner", "Platform Owner", [], true);
+    await loginAs(agent, { ...user, discordRoleId: "111111111111111111", discordRoleName: "Old Role" });
+
+    const before = await agent.get("/api/auth/me").expect(200);
+    expect(before.body.user.discordRoleName).toBe("Old Role");
+
+    // Simulate re-picking the owner's Discord role via Staff → Edit Discord Role.
+    const { db } = await import("../src/database/client.js");
+    const { staffMembers } = await import("../src/database/schema/index.js");
+    const { eq } = await import("drizzle-orm");
+    await db
+      .update(staffMembers)
+      .set({ discordRoleId: "222222222222222222", discordRoleName: "New Role" })
+      .where(eq(staffMembers.id, owner.id));
+
+    const after = await agent.get("/api/auth/me").expect(200);
+    expect(after.body.user.discordRoleName).toBe("New Role");
+    expect(after.body.user.discordRoleId).toBe("222222222222222222");
+  });
+
   it("denies access after staff status becomes INACTIVE (revocation takes effect immediately)", async () => {
     const app = buildApp();
     const roles = await seedDefaultRoles();
