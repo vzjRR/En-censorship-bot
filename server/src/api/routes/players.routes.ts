@@ -7,6 +7,7 @@ import { searchRateLimit } from "../middleware/rateLimit.js";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import { searchPlayers, getPlayerProfile, getPlayerTimeline } from "../../moderation/players/players.service.js";
+import { searchGuildMembers } from "../../bot/services/memberService.js";
 
 export const playersRouter = Router();
 
@@ -21,6 +22,28 @@ playersRouter.get(
     try {
       const { query } = req.query as unknown as { query: string };
       const results = await searchPlayers(query);
+      res.json({ results });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/**
+ * Live Discord member search for the Warning/Ban "search player" flow — the
+ * platform requirement that player identity be resolved from Discord, not
+ * free-typed. Separate from /staff/search-discord (which is gated to
+ * staff.manage): any staff who can issue a warning/ban needs this too.
+ */
+playersRouter.get(
+  "/search-discord",
+  requirePermission(PERMISSIONS.PLAYERS_VIEW),
+  searchRateLimit,
+  validateQuery(z.object({ query: z.string().min(1).max(100) })),
+  async (req, res, next) => {
+    try {
+      const { query } = req.query as unknown as { query: string };
+      const results = await searchGuildMembers(query);
       res.json({ results });
     } catch (err) {
       next(err);

@@ -21,7 +21,7 @@ describe("Fixed Discord message templates", () => {
     expect(msg).toContain("ملاحظات: All clear");
   });
 
-  it("formats the warning message with the exact required layout", async () => {
+  it("formats the warning message with the exact required layout, mentioning the player and staff (with their Discord role)", async () => {
     const msg = await warningLogMessage({
       playerDiscordId: "123456789012345678",
       playerName: "Fallback Name",
@@ -31,6 +31,8 @@ describe("Fixed Discord message templates", () => {
       durationType: "7_days",
       durationHours: 168,
       staffName: "Staff Name",
+      staffDiscordId: "999999999999999999",
+      staffRole: "Head Staff",
     });
 
     expect(msg).toContain("**يتم تسجيل الورنيج بالصيغة التالية:**");
@@ -38,7 +40,7 @@ describe("Fixed Discord message templates", () => {
     expect(msg).toContain("رقم الورنيج: warning 1");
     expect(msg).toContain("سبب الورنيج: RDM");
     expect(msg).toContain("مدة الورنيج: 7 أيام");
-    expect(msg).toContain("اسم الرقابي: Staff Name");
+    expect(msg).toContain("اسم الرقابي: <@999999999999999999> (Head Staff)");
   });
 
   it("falls back to the player name when no Discord ID is known", async () => {
@@ -51,12 +53,14 @@ describe("Fixed Discord message templates", () => {
       durationType: "PERMANENT",
       durationHours: null,
       staffName: "Staff Name",
+      staffDiscordId: "999999999999999999",
+      staffRole: "Head Staff",
     });
     expect(msg).toContain("اسم اللاعب: Fallback Name");
     expect(msg).toContain("مدة الورنيج: دائم");
   });
 
-  it("formats the ban message with the exact required layout", async () => {
+  it("formats the ban message with the exact required layout, mentioning the player and staff (with their Discord role)", async () => {
     const msg = await banLogMessage({
       fivemIdentifier: "steam:1100001",
       playerDiscordId: "123456789012345678",
@@ -66,14 +70,31 @@ describe("Fixed Discord message templates", () => {
       durationType: "6_hours",
       durationHours: 6,
       staffDiscordId: "999999999999999999",
+      staffRole: "Head Staff",
     });
 
     expect(msg).toContain("player id : steam:1100001");
+    expect(msg).toContain("اللاعب: <@123456789012345678>");
     expect(msg).toContain("band: 6 h");
     expect(msg).toContain("Reason: تكويت في نص سناريو");
     expect(msg).toMatch(/date: \d{1,2}-\d{1,2}-\d{2}/);
     expect(msg).toContain("band time : 6 h");
-    expect(msg).toContain("censorhip name: <@999999999999999999>");
+    expect(msg).toContain("censorhip name: <@999999999999999999> (Head Staff)");
+  });
+
+  it("falls back to the player name in the ban mention when no Discord ID is known", async () => {
+    const msg = await banLogMessage({
+      fivemIdentifier: null,
+      playerDiscordId: null,
+      playerName: "No Discord Player",
+      reason: "Cheating",
+      issuedAt: new Date(),
+      durationType: "PERMANENT",
+      durationHours: null,
+      staffDiscordId: "999999999999999999",
+      staffRole: "Head Staff",
+    });
+    expect(msg).toContain("اللاعب: No Discord Player");
   });
 
   it("uses a custom template override when one has been saved, and reverts when cleared", async () => {

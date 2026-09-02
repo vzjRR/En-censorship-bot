@@ -58,12 +58,36 @@ export async function listStaffMembers(): Promise<StaffMemberWithRole[]> {
   return Promise.all(members.map(attachRole));
 }
 
+/**
+ * Manager and Deputy Manager are singleton positions: at most one active
+ * staff member may hold each. Custom roles an owner creates later are not
+ * constrained this way — only these two built-in keys.
+ */
+const SINGLETON_ROLE_KEYS = new Set(["manager", "deputy_manager"]);
+
+async function assertRoleSingleton(roleId: string, excludeStaffId?: string): Promise<void> {
+  const role = await db.query.staffRoles.findFirst({ where: eq(staffRoles.id, roleId) });
+  if (!role || !SINGLETON_ROLE_KEYS.has(role.key)) return;
+
+  const holders = await db.query.staffMembers.findMany({
+    where: and(eq(staffMembers.roleId, roleId), eq(staffMembers.status, "ACTIVE")),
+  });
+  const otherHolder = holders.find((h) => h.id !== excludeStaffId);
+  if (otherHolder) {
+    throw new Error(
+      `Only one active "${role.name}" is allowed, and ${otherHolder.displayName} already holds it. Reassign or remove them first.`,
+    );
+  }
+}
+
 export interface AddStaffInput {
   discordUserId: string;
   discordUsername: string;
   displayName: string;
   roleId: string;
   discordRoleIds: string[];
+  discordRoleId?: string | null;
+  discordRoleName?: string | null;
   addedByDiscordId: string;
   addedByName: string;
 }
@@ -76,6 +100,8 @@ export async function addStaffMember(input: AddStaffInput): Promise<StaffMemberW
     throw new Error("This Discord member is already a staff member.");
   }
 
+  await assertRoleSingleton(input.roleId);
+
   const [member] = await db
     .insert(staffMembers)
     .values({
@@ -84,6 +110,8 @@ export async function addStaffMember(input: AddStaffInput): Promise<StaffMemberW
       displayName: input.displayName,
       roleId: input.roleId,
       discordRoleIds: input.discordRoleIds,
+      discordRoleId: input.discordRoleId ?? null,
+      discordRoleName: input.discordRoleName ?? null,
       status: "ACTIVE",
       addedByDiscordId: input.addedByDiscordId,
       lastRoleSyncAt: new Date(),
@@ -139,6 +167,8 @@ export async function changeStaffRole(
   const before = await findStaffById(id);
   if (!before) throw new Error("Staff member not found");
 
+  await assertRoleSingleton(newRoleId, id);
+
   const [member] = await db
     .update(staffMembers)
     .set({ roleId: newRoleId, updatedAt: new Date() })
@@ -181,6 +211,37 @@ export async function syncStaffDiscordRoles(id: string, discordRoleIds: string[]
     .update(staffMembers)
     .set({ discordRoleIds, lastRoleSyncAt: new Date(), updatedAt: new Date() })
     .where(eq(staffMembers.id, id));
+}
+
+/**
+ * Updates which Discord role represents this staff member in moderation
+ * messages — separate from their platform permission role. The caller is
+ * responsible for resolving discordRoleName from a live Discord fetch
+ * (never trust a client-supplied name).
+ */
+export async function setStaffDiscordRole(
+  id: string,
+  discordRoleId: string,
+  discordRoleName: string,
+  actor: { discordId: string; name: string },
+): Promise<StaffMemberWithRole> {
+  const [member] = await db
+    .update(staffMembers)
+    .set({ discordRoleId, discordRoleName, updatedAt: new Date() })
+    .where(eq(staffMembers.id, id))
+    .returning();
+  if (!member) throw new Error("Staff member not found");
+
+  await recordAuditLog({
+    actorDiscordId: actor.discordId,
+    actorName: actor.name,
+    action: AUDIT_ACTIONS.STAFF_UPDATED,
+    targetType: "staff_member",
+    targetId: id,
+    metadata: { discordRoleId, discordRoleName },
+  });
+
+  return attachRole(member);
 }
 
 /**

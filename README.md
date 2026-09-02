@@ -1,4 +1,4 @@
-# ENCLAVE RP — Moderation Control Platform
+# ENCLAVE RP — Censorship Platform
 
 A production-oriented Discord OAuth2 + moderation dashboard + Discord bot for
 the ENCLAVE RP Discord/FiveM server. It manages staff access, on-duty

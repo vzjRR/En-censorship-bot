@@ -24,9 +24,18 @@ function FullScreenSpinner() {
   );
 }
 
-function RequirePermission({ permission, children }: { permission?: string; children: React.ReactNode }) {
-  const { hasPermission } = useAuth();
+function RequirePermission({
+  permission,
+  anyOf,
+  children,
+}: {
+  permission?: string;
+  anyOf?: string[];
+  children: React.ReactNode;
+}) {
+  const { hasPermission, hasAnyPermission } = useAuth();
   if (permission && !hasPermission(permission)) return <NotAuthorized />;
+  if (anyOf && !hasAnyPermission(anyOf)) return <NotAuthorized />;
   return <>{children}</>;
 }
 
@@ -115,7 +124,7 @@ export function App() {
         <Route
           path="settings"
           element={
-            <RequirePermission permission="settings.manage">
+            <RequirePermission anyOf={["settings.manage", "messages.manage", "channels.manage", "test_mode.manage"]}>
               <Settings />
             </RequirePermission>
           }

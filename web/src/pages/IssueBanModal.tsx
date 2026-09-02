@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, ApiError } from "../lib/api";
 import { Modal, Button, Input, Select, Field, ErrorBanner } from "../components/ui";
+import { PlayerSearchField } from "../components/PlayerSearchField";
 import { DURATION_OPTIONS_BAN } from "../lib/types";
 
 export function IssueBanModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
@@ -81,6 +82,12 @@ export function IssueBanModal({ onClose, onCreated }: { onClose: () => void; onC
   return (
     <Modal open onClose={onClose} title="Issue Ban">
       <div className="space-y-4">
+        <PlayerSearchField
+          onSelect={(p) => {
+            setPlayerDiscordId(p.discordId);
+            setPlayerName(p.displayName);
+          }}
+        />
         <Field label="Player Discord ID (optional)">
           <Input value={playerDiscordId} onChange={(e) => setPlayerDiscordId(e.target.value)} placeholder="e.g. 123456789012345678" />
         </Field>

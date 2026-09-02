@@ -6,34 +6,50 @@ interface NavItem {
   to: string;
   label: string;
   icon: string;
-  permission?: string;
+  /** Any one of these grants visibility — omit to show unconditionally. */
+  permissions?: string[];
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: "🏠", permission: "dashboard.view" },
-  { to: "/staff", label: "All Staff", icon: "👮", permission: "staff.view" },
+  { to: "/", label: "Dashboard", icon: "🏠", permissions: ["dashboard.view"] },
+  { to: "/staff", label: "All Staff", icon: "👮", permissions: ["staff.view"] },
   { to: "/staff/on-duty", label: "On Duty", icon: "🟢" },
-  { to: "/staff/sessions", label: "Staff Sessions", icon: "🕒", permission: "staff.view" },
-  { to: "/warnings", label: "Warnings", icon: "⚠️", permission: "warnings.view" },
-  { to: "/bans", label: "Bans", icon: "🔨", permission: "bans.view" },
-  { to: "/players", label: "Players", icon: "👤", permission: "players.view" },
-  { to: "/statistics", label: "Statistics", icon: "📊", permission: "statistics.view" },
-  { to: "/audit", label: "Audit Logs", icon: "📜", permission: "audit.view" },
-  { to: "/settings", label: "Settings", icon: "⚙️", permission: "settings.manage" },
+  { to: "/staff/sessions", label: "Staff Sessions", icon: "🕒", permissions: ["staff.view"] },
+  { to: "/warnings", label: "Warnings", icon: "⚠️", permissions: ["warnings.view"] },
+  { to: "/bans", label: "Bans", icon: "🔨", permissions: ["bans.view"] },
+  { to: "/players", label: "Players", icon: "👤", permissions: ["players.view"] },
+  { to: "/statistics", label: "Statistics", icon: "📊", permissions: ["statistics.view"] },
+  { to: "/audit", label: "Audit Logs", icon: "📜", permissions: ["audit.view"] },
+  {
+    to: "/settings",
+    label: "Settings",
+    icon: "⚙️",
+    // Anyone who can manage at least one settings area gets in — the page
+    // itself only shows the section(s) they actually have permission for
+    // (e.g. Deputy Manager sees Messages only, never Staff Roles).
+    permissions: ["settings.manage", "messages.manage", "channels.manage", "test_mode.manage"],
+  },
 ];
 
 export function Layout() {
-  const { user, hasPermission, logout } = useAuth();
+  const { user, hasAnyPermission, logout } = useAuth();
 
   return (
     <div className="flex min-h-screen bg-surface">
       <aside className="flex w-60 shrink-0 flex-col border-r border-surface-border bg-surface-raised">
-        <div className="px-4 py-5">
-          <div className="text-sm font-bold tracking-wide text-slate-100">ENCLAVE RP</div>
-          <div className="text-xs text-slate-500">Moderation Control</div>
+        <div className="flex items-center gap-2 px-4 py-5">
+          <img
+            src={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/favicon.png`}
+            alt=""
+            className="h-8 w-8 rounded-full object-cover"
+          />
+          <div>
+            <div className="text-sm font-bold tracking-wide text-slate-100">ENCLAVE RP</div>
+            <div className="text-xs text-slate-500">Censorship Platform</div>
+          </div>
         </div>
         <nav className="flex-1 space-y-1 px-2">
-          {NAV_ITEMS.filter((item) => !item.permission || hasPermission(item.permission)).map((item) => (
+          {NAV_ITEMS.filter((item) => !item.permissions || hasAnyPermission(item.permissions)).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -49,6 +65,17 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
+
+        {/* Credits — per platform requirement, shown directly below Settings / as the sidebar footer. */}
+        <div className="border-t border-surface-border px-4 py-3 text-center text-[11px] leading-tight text-slate-600">
+          <div>
+            Developed by <span className="text-slate-400">vzjRR</span>
+          </div>
+          <div>
+            Designed by <span className="text-slate-400">𝑃𝐿𝑎𝑛𝑘²¹ (@yi21_)</span>
+          </div>
+        </div>
+
         <div className="border-t border-surface-border p-3">
           <button onClick={() => void logout().then(() => window.location.assign(import.meta.env.BASE_URL))} className="w-full rounded-md px-3 py-2 text-left text-sm text-slate-400 hover:bg-surface-border/50 hover:text-slate-200">
             ↩ Log out

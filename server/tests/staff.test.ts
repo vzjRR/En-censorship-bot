@@ -58,6 +58,46 @@ describe("Staff management", () => {
     expect(res.body.error).toBe("csrf_invalid");
   });
 
+  it("rejects a second Manager while one is already active", async () => {
+    const roles = await seedDefaultRoles();
+    await createStaffMember(roles.manager);
+
+    const { addStaffMember } = await import("../src/staff/staff.service.js");
+    await expect(
+      addStaffMember({
+        discordUserId: nextDiscordId(),
+        discordUsername: "second_manager",
+        displayName: "Second Manager",
+        roleId: roles.manager,
+        discordRoleIds: [],
+        addedByDiscordId: "1",
+        addedByName: "Tester",
+      }),
+    ).rejects.toThrow(/only one active/i);
+  });
+
+  it("rejects a second Deputy Manager while one is already active, including via role-change", async () => {
+    const roles = await seedDefaultRoles();
+    await createStaffMember(roles.deputy_manager);
+    const staffMember = await createStaffMember(roles.staff);
+
+    const { changeStaffRole } = await import("../src/staff/staff.service.js");
+    await expect(changeStaffRole(staffMember.id, roles.deputy_manager, { discordId: "1", name: "Tester" })).rejects.toThrow(
+      /only one active/i,
+    );
+  });
+
+  it("allows reassigning the same Manager slot to itself and allows a normal Staff role to have many holders", async () => {
+    const roles = await seedDefaultRoles();
+    const manager = await createStaffMember(roles.manager);
+    await createStaffMember(roles.staff);
+    await createStaffMember(roles.staff);
+
+    const { changeStaffRole } = await import("../src/staff/staff.service.js");
+    // Re-assigning the current holder to the same singleton role is a no-op, not a conflict.
+    await expect(changeStaffRole(manager.id, roles.manager, { discordId: "1", name: "Tester" })).resolves.toBeTruthy();
+  });
+
   it("soft-removes (deactivates) rather than deleting a staff member", async () => {
     const app = buildApp();
     const roles = await seedDefaultRoles();

@@ -130,6 +130,7 @@ function NewRoleForm({ onCreated }: { onCreated: () => void }) {
 
 export function Settings() {
   const { hasPermission } = useAuth();
+  const canManageSettings = hasPermission("settings.manage");
   const [config, setConfig] = useState<PlatformConfig | null>(null);
   const [roles, setRoles] = useState<StaffRole[] | null>(null);
 
@@ -139,11 +140,12 @@ export function Settings() {
   };
 
   useEffect(() => {
+    if (!canManageSettings) return;
     void api.get<PlatformConfig>("/settings/config").then(setConfig);
     void loadRoles();
-  }, []);
+  }, [canManageSettings]);
 
-  if (!config || !roles) {
+  if (canManageSettings && (!config || !roles)) {
     return (
       <div className="flex justify-center py-20">
         <Spinner />
@@ -155,53 +157,57 @@ export function Settings() {
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-slate-100">Settings</h1>
 
-      <Card title="Platform Configuration">
-        <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-          <div>
-            <dt className="text-xs text-slate-500">Discord Bot</dt>
-            <dd className="flex items-center gap-2">
-              <StatusBadge status={config.botConnected ? "ACTIVE" : "FAILED"} /> {config.botId}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">Platform Owner ID</dt>
-            <dd className="font-mono text-slate-300">{config.platformOwnerId}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">Guild ID</dt>
-            <dd className="font-mono text-slate-300">{config.guildId}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">Timezone</dt>
-            <dd className="text-slate-300">{config.timezone}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">Staff Log Channel</dt>
-            <dd className="font-mono text-slate-300">{config.channels.staffLog}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">Warning Log Channel</dt>
-            <dd className="font-mono text-slate-300">{config.channels.warningLog}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">Ban Log Channel</dt>
-            <dd className="font-mono text-slate-300">{config.channels.banLog}</dd>
-          </div>
-        </dl>
-        <p className="mt-3 text-xs text-slate-600">
-          The Discord IDs above are the environment defaults. Use Channels below to route individual message types
-          elsewhere, or Test Mode to redirect everything to a sandbox server.
-        </p>
-      </Card>
+      {canManageSettings && config && (
+        <Card title="Platform Configuration">
+          <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+            <div>
+              <dt className="text-xs text-slate-500">Discord Bot</dt>
+              <dd className="flex items-center gap-2">
+                <StatusBadge status={config.botConnected ? "ACTIVE" : "FAILED"} /> {config.botId}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">Platform Owner ID</dt>
+              <dd className="font-mono text-slate-300">{config.platformOwnerId}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">Guild ID</dt>
+              <dd className="font-mono text-slate-300">{config.guildId}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">Timezone</dt>
+              <dd className="text-slate-300">{config.timezone}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">Staff Log Channel</dt>
+              <dd className="font-mono text-slate-300">{config.channels.staffLog}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">Warning Log Channel</dt>
+              <dd className="font-mono text-slate-300">{config.channels.warningLog}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">Ban Log Channel</dt>
+              <dd className="font-mono text-slate-300">{config.channels.banLog}</dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-xs text-slate-600">
+            The Discord IDs above are the environment defaults. Use Channels below to route individual message types
+            elsewhere, or Test Mode to redirect everything to a sandbox server.
+          </p>
+        </Card>
+      )}
 
-      <Card title="Staff Roles & Permissions">
-        <div className="space-y-2">
-          {roles.map((role) => (
-            <RoleEditor key={role.id} role={role} onSaved={loadRoles} />
-          ))}
-          <NewRoleForm onCreated={loadRoles} />
-        </div>
-      </Card>
+      {canManageSettings && roles && (
+        <Card title="Staff Roles & Permissions">
+          <div className="space-y-2">
+            {roles.map((role) => (
+              <RoleEditor key={role.id} role={role} onSaved={loadRoles} />
+            ))}
+            <NewRoleForm onCreated={loadRoles} />
+          </div>
+        </Card>
+      )}
 
       {hasPermission("messages.manage") && <MessagesPanel />}
       {hasPermission("channels.manage") && <ChannelsPanel />}

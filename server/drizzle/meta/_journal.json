@@ -15,6 +15,13 @@
       "when": 1788308911026,
       "tag": "0001_slippery_hedge_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788321486843,
+      "tag": "0002_unique_tomas",
+      "breakpoints": true
     }
   ]
 }

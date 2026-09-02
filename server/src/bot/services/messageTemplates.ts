@@ -43,6 +43,8 @@ export async function warningLogMessage(params: {
   durationType: DurationType;
   durationHours: number | null;
   staffName: string;
+  staffDiscordId: string;
+  staffRole: string;
 }): Promise<string> {
   const templates = await getEffectiveTemplates();
   const playerRef = params.playerDiscordId ? `<@${params.playerDiscordId}>` : params.playerName;
@@ -53,6 +55,8 @@ export async function warningLogMessage(params: {
     issuedDate: formatDiscordDate(params.issuedAt),
     duration: formatDurationArabic(params.durationType, params.durationHours),
     staffName: params.staffName,
+    staffMention: `<@${params.staffDiscordId}>`,
+    staffRole: params.staffRole,
   });
 }
 
@@ -65,15 +69,19 @@ export async function banLogMessage(params: {
   durationType: DurationType;
   durationHours: number | null;
   staffDiscordId: string;
+  staffRole: string;
 }): Promise<string> {
   const templates = await getEffectiveTemplates();
   const identifier = params.fivemIdentifier?.trim() || params.playerDiscordId || params.playerName;
+  const playerMention = params.playerDiscordId ? `<@${params.playerDiscordId}>` : params.playerName;
   const durationLabel = formatDurationShort(params.durationType, params.durationHours);
   return renderTemplate(templates.ban, {
     identifier,
+    playerMention,
     duration: durationLabel,
     reason: params.reason,
     date: formatBanShortDate(params.issuedAt),
     staffMention: `<@${params.staffDiscordId}>`,
+    staffRole: params.staffRole,
   });
 }

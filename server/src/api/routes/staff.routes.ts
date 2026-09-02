@@ -14,6 +14,7 @@ import {
   changeStaffRole,
   removeStaffMember,
   findStaffById,
+  setStaffDiscordRole,
 } from "../../staff/staff.service.js";
 import { listStaffRoles, createStaffRole, updateStaffRole, deleteStaffRole } from "../../staff/roles.service.js";
 import { ALL_PERMISSIONS, PLATFORM_OWNER_ROLE_KEY } from "../../auth/permissions.js";
@@ -154,6 +155,9 @@ const addStaffSchema = z.object({
   discordUserId: discordIdSchema,
   roleId: uuidSchema,
   displayNameOverride: z.string().min(1).max(100).optional(),
+  // The Discord role that represents them as staff in moderation messages —
+  // distinct from roleId (the platform permission level, checked above).
+  discordRoleId: discordIdSchema.optional(),
 });
 
 staffRouter.post(
@@ -163,11 +167,22 @@ staffRouter.post(
   validateBody(addStaffSchema),
   async (req, res, next) => {
     try {
-      // Never trust a client-supplied username/display name for identity —
-      // resolve it from Discord via the bot itself.
+      // Never trust a client-supplied username/display name/role for identity
+      // — resolve everything from Discord via the bot itself.
       const member = await fetchGuildMember(req.body.discordUserId);
       if (!member) {
         throw new ApiError(400, "not_a_guild_member", "This Discord user is not a member of the server.");
+      }
+
+      let discordRoleId: string | null = null;
+      let discordRoleName: string | null = null;
+      if (req.body.discordRoleId) {
+        const matchedRole = member.roles.find((r) => r.id === req.body.discordRoleId);
+        if (!matchedRole) {
+          throw new ApiError(400, "invalid_discord_role", "This Discord member does not currently hold that role.");
+        }
+        discordRoleId = matchedRole.id;
+        discordRoleName = matchedRole.name;
       }
 
       const created = await addStaffMember({
@@ -176,10 +191,43 @@ staffRouter.post(
         displayName: req.body.displayNameOverride ?? member.displayName,
         roleId: req.body.roleId,
         discordRoleIds: member.roleIds,
+        discordRoleId,
+        discordRoleName,
         addedByDiscordId: req.auth!.discordUserId,
         addedByName: req.auth!.displayName,
       });
       res.status(201).json({ staff: created });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+staffRouter.patch(
+  "/:id/discord-role",
+  requirePermission(PERMISSIONS.STAFF_MANAGE),
+  adminRateLimit,
+  validateParams(z.object({ id: uuidSchema })),
+  validateBody(z.object({ discordRoleId: discordIdSchema })),
+  async (req, res, next) => {
+    try {
+      const existing = await findStaffById(req.params.id);
+      if (!existing) throw new ApiError(404, "not_found", "Staff member not found.");
+
+      const member = await fetchGuildMember(existing.discordUserId);
+      if (!member) {
+        throw new ApiError(400, "not_a_guild_member", "This staff member is no longer in the Discord server.");
+      }
+      const matchedRole = member.roles.find((r) => r.id === req.body.discordRoleId);
+      if (!matchedRole) {
+        throw new ApiError(400, "invalid_discord_role", "This Discord member does not currently hold that role.");
+      }
+
+      const updated = await setStaffDiscordRole(req.params.id, matchedRole.id, matchedRole.name, {
+        discordId: req.auth!.discordUserId,
+        name: req.auth!.displayName,
+      });
+      res.json({ staff: updated });
     } catch (err) {
       next(err);
     }

@@ -15,7 +15,7 @@ async function main() {
 
   const app = createApp();
   const server = app.listen(env.PORT, () => {
-    console.log(`[main] ENCLAVE RP moderation platform listening on port ${env.PORT} (base path: "${env.BASE_PATH || "/"}")`);
+    console.log(`[main] ENCLAVE RP censorship platform listening on port ${env.PORT} (base path: "${env.BASE_PATH || "/"}")`);
   });
 
   const shutdown = async (signal: string) => {

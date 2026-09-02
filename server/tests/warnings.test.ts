@@ -112,6 +112,7 @@ describe("Warning system", () => {
         roleName: "Staff",
         permissions: [],
         discordRoleIds: [],
+        discordRoleName: null,
         rolesSyncedAt: new Date().toISOString(),
       },
     );

@@ -1,4 +1,4 @@
-# systemd unit for the ENCLAVE RP moderation platform (enclaverp.cc/censorship).
+# systemd unit for the ENCLAVE RP censorship platform (enclaverp.cc/censorship).
 #
 # Separate from the store, homepage and tickets bot units on purpose — same
 # reasoning as enclave-home's unit: a crash, a deploy, or an OOM here must
@@ -16,7 +16,7 @@
 #   sudo systemctl daemon-reload && sudo systemctl enable --now enclave-censorship
 
 [Unit]
-Description=ENCLAVE RP moderation platform (enclaverp.cc/censorship)
+Description=ENCLAVE RP censorship platform (enclaverp.cc/censorship)
 Documentation=https://github.com/vzjRR/En-censorship-bot
 After=network-online.target postgresql.service
 Wants=network-online.target

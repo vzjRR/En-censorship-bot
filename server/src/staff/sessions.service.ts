@@ -42,7 +42,7 @@ export async function listStaffSessionHistory(staffUserId?: string, limit = 100)
  * it's recorded in staff_sessions.loginMessageId as null / logged instead.
  */
 export async function startDuty(
-  user: Pick<AuthenticatedSessionUser, "staffId" | "discordUserId" | "displayName" | "roleName">,
+  user: Pick<AuthenticatedSessionUser, "staffId" | "discordUserId" | "displayName" | "roleName" | "discordRoleName">,
 ): Promise<StaffSession> {
   if (!user.staffId) {
     throw new Error("No staff record is associated with this account yet. Please try logging in again.");
@@ -72,10 +72,17 @@ export async function startDuty(
     throw err;
   }
 
+  // The message shows the person's DISCORD role, never the platform
+  // permission role (which stays internal to the dashboard) — falls back to
+  // the platform role name only if no Discord role has been assigned yet.
   const channels = await getEffectiveChannels();
   const result = await sendChannelMessage(
     channels.staffLog,
-    await staffLoginMessage({ staffName: user.displayName, staffRole: user.roleName, loginTime: created.loginTime }),
+    await staffLoginMessage({
+      staffName: user.displayName,
+      staffRole: user.discordRoleName ?? user.roleName,
+      loginTime: created.loginTime,
+    }),
   );
 
   if (result.status === "SENT" && result.messageId) {
@@ -95,7 +102,7 @@ export async function startDuty(
 }
 
 export async function endDuty(
-  user: Pick<AuthenticatedSessionUser, "discordUserId" | "displayName" | "roleName">,
+  user: Pick<AuthenticatedSessionUser, "discordUserId" | "displayName" | "roleName" | "discordRoleName">,
   notes?: string | null,
 ): Promise<StaffSession> {
   const active = await getActiveDutySession(user.discordUserId);
@@ -117,7 +124,12 @@ export async function endDuty(
   const channels = await getEffectiveChannels();
   const result = await sendChannelMessage(
     channels.staffLog,
-    await staffLogoutMessage({ staffName: user.displayName, staffRole: user.roleName, logoutTime, notes }),
+    await staffLogoutMessage({
+      staffName: user.displayName,
+      staffRole: user.discordRoleName ?? user.roleName,
+      logoutTime,
+      notes,
+    }),
   );
 
   if (result.status === "SENT" && result.messageId) {

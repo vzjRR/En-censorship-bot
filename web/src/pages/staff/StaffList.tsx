@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { Card, Button, Select, StatusBadge, Spinner, EmptyState } from "../../components/ui";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { AddStaffModal } from "./AddStaffModal";
+import { EditDiscordRoleModal } from "./EditDiscordRoleModal";
 import type { StaffMember, StaffRole } from "../../lib/types";
 
 export function StaffList() {
@@ -12,6 +13,7 @@ export function StaffList() {
   const [roles, setRoles] = useState<StaffRole[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<StaffMember | null>(null);
+  const [editDiscordRoleTarget, setEditDiscordRoleTarget] = useState<StaffMember | null>(null);
   const [search, setSearch] = useState("");
 
   const canManage = hasPermission("staff.manage");
@@ -72,7 +74,8 @@ export function StaffList() {
                 <tr className="border-b border-surface-border text-xs uppercase text-slate-500">
                   <th className="pb-2 pr-4">Name</th>
                   <th className="pb-2 pr-4">Discord</th>
-                  <th className="pb-2 pr-4">Role</th>
+                  <th className="pb-2 pr-4">Staff Role</th>
+                  <th className="pb-2 pr-4">Discord Role</th>
                   <th className="pb-2 pr-4">Status</th>
                   {canManage && <th className="pb-2 pr-4">Actions</th>}
                 </tr>
@@ -99,6 +102,17 @@ export function StaffList() {
                       )}
                     </td>
                     <td className="py-2 pr-4">
+                      {member.discordRoleName ?? <span className="text-slate-600">Not set</span>}
+                      {canManage && (
+                        <button
+                          onClick={() => setEditDiscordRoleTarget(member)}
+                          className="ml-2 text-xs text-accent hover:underline"
+                        >
+                          {member.discordRoleName ? "Change" : "Set"}
+                        </button>
+                      )}
+                    </td>
+                    <td className="py-2 pr-4">
                       <StatusBadge status={member.status} />
                     </td>
                     {canManage && (
@@ -119,6 +133,10 @@ export function StaffList() {
       </Card>
 
       {showAdd && <AddStaffModal roles={roles} onClose={() => setShowAdd(false)} onAdded={load} />}
+
+      {editDiscordRoleTarget && (
+        <EditDiscordRoleModal member={editDiscordRoleTarget} onClose={() => setEditDiscordRoleTarget(null)} onSaved={load} />
+      )}
 
       <ConfirmDialog
         open={!!removeTarget}

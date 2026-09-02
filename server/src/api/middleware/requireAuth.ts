@@ -49,6 +49,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     roleKey: staff.role.key,
     roleName: staff.role.name,
     permissions: staff.role.permissions,
+    discordRoleName: staff.discordRoleName,
   };
   req.auth = req.session.user;
   next();

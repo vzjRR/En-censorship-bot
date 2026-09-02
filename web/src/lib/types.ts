@@ -9,6 +9,7 @@ export interface SessionUser {
   roleName: string;
   permissions: string[];
   discordRoleIds: string[];
+  discordRoleName: string | null;
   rolesSyncedAt: string;
 }
 
@@ -29,6 +30,8 @@ export interface StaffMember {
   displayName: string;
   roleId: string;
   discordRoleIds: string[];
+  discordRoleId: string | null;
+  discordRoleName: string | null;
   status: "ACTIVE" | "INACTIVE";
   createdAt: string;
   updatedAt: string;

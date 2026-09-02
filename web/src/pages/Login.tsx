@@ -21,9 +21,13 @@ export function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface px-4">
       <div className="w-full max-w-sm rounded-lg border border-surface-border bg-surface-raised p-8 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent/15 text-2xl">🛡️</div>
+        <img
+          src={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/favicon.png`}
+          alt=""
+          className="mx-auto mb-4 h-14 w-14 rounded-full bg-accent/15 object-cover"
+        />
         <h1 className="text-lg font-semibold text-slate-100">ENCLAVE RP</h1>
-        <p className="mt-1 text-sm text-slate-400">Moderation Control Platform</p>
+        <p className="mt-1 text-sm text-slate-400">Censorship Platform</p>
 
         {authError && (
           <div className="mt-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-left text-sm text-danger">

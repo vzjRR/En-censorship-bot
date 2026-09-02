@@ -7,6 +7,7 @@ interface AuthState {
   loading: boolean;
   authError: string | null;
   hasPermission: (permission: string) => boolean;
+  hasAnyPermission: (permissions: string[]) => boolean;
   loginUrl: () => string;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -62,8 +63,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user],
   );
 
+  const hasAnyPermission = useCallback(
+    (permissions: string[]) => {
+      if (!user) return false;
+      if (user.isPlatformOwner) return true;
+      return permissions.some((p) => user.permissions.includes(p));
+    },
+    [user],
+  );
+
   return (
-    <AuthContext.Provider value={{ user, loading, authError, hasPermission, loginUrl, logout, refresh }}>
+    <AuthContext.Provider value={{ user, loading, authError, hasPermission, hasAnyPermission, loginUrl, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );

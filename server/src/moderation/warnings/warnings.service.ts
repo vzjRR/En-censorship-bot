@@ -55,9 +55,26 @@ export async function createWarning(input: CreateWarningInput, actor: Authentica
   // Evidence is a precondition of the record, not the notification step —
   // upload/validate it before writing anything to the database.
   const channels = await getEffectiveChannels();
-  const evidenceRecords = await storeEvidenceFiles(input.evidenceFiles, {
+
+  // Built before the evidence upload so that, when the Discord storage
+  // driver is active, the evidence attaches directly to this announcement
+  // message instead of a separate message posted ahead of it.
+  const logContent = await warningLogMessage({
+    playerDiscordId: player.discordUserId,
+    playerName: player.playerName,
+    warningNumber,
+    reason: input.reason,
+    issuedAt,
+    durationType,
+    durationHours,
+    staffName: actor.displayName,
+    staffDiscordId: actor.discordUserId,
+    staffRole: actor.discordRoleName ?? actor.roleName,
+  });
+
+  const { records: evidenceRecords, logResult: combinedLogResult } = await storeEvidenceFiles(input.evidenceFiles, {
     channelId: channels.warningLog,
-    caption: `Evidence for warning #${warningNumber} — ${player.playerName}`,
+    content: logContent,
   });
 
   const warningCode = await generateModerationCode("WRN", nowInDisplayZone().year);
@@ -114,20 +131,11 @@ export async function createWarning(input: CreateWarningInput, actor: Authentica
     metadata: { warningCode, playerId: player.id, warningNumber, reason: input.reason, durationType },
   });
 
-  // Notification step — allowed to fail without affecting the created record.
-  const logResult = await sendChannelMessage(
-    channels.warningLog,
-    await warningLogMessage({
-      playerDiscordId: player.discordUserId,
-      playerName: player.playerName,
-      warningNumber,
-      reason: input.reason,
-      issuedAt,
-      durationType,
-      durationHours,
-      staffName: actor.displayName,
-    }),
-  );
+  // Notification step — allowed to fail without affecting the created
+  // record. If the evidence upload already sent the combined
+  // announcement+evidence message (Discord storage driver), reuse that
+  // result instead of sending a second, redundant message.
+  const logResult = combinedLogResult ?? (await sendChannelMessage(channels.warningLog, logContent));
 
   const [updated] = await db
     .update(warnings)

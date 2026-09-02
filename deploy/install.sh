@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Install the ENCLAVE RP moderation platform on the same Oracle Cloud box
+# Install the ENCLAVE RP censorship platform on the same Oracle Cloud box
 # as the store, homepage, and tickets bot.
 #
 #   sudo bash deploy/install.sh
@@ -195,7 +195,7 @@ else
 
     log "Writing $ENV_FILE (port $PORT_CHOSEN)"
     cat > "$ENV_FILE" <<EOF
-# ENCLAVE RP moderation platform. Fill in the Discord blanks below, then:
+# ENCLAVE RP censorship platform. Fill in the Discord blanks below, then:
 #   sudo systemctl restart enclave-censorship
 
 NODE_ENV=production
@@ -293,7 +293,7 @@ $(log "Next, by hand")
    until it does. While the service is down, /censorship simply 404s;
    it does not affect enclaverp.cc's homepage or store.
 
-2. Add the moderation platform's route into the existing enclaverp.cc
+2. Add the censorship platform's route into the existing enclaverp.cc
    block in /etc/caddy/Caddyfile (it currently proxies everything to
    enclave-home on 3001 — this adds a /censorship* route ahead of that
    without disturbing it). See $APP_DIR/deploy/README.md for the exact

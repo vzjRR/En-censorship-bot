@@ -73,6 +73,7 @@ export function sessionUserFor(
     roleName,
     permissions,
     discordRoleIds: [],
+    discordRoleName: null,
     rolesSyncedAt: new Date().toISOString(),
   };
 }

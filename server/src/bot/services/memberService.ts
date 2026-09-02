@@ -1,21 +1,30 @@
 import { ChannelType } from "discord.js";
 import { getModerationGuild } from "../client.js";
 
+export interface GuildRoleSummary {
+  id: string;
+  name: string;
+}
+
 export interface GuildMemberSummary {
   id: string;
   username: string;
   displayName: string;
   avatarUrl: string | null;
   roleIds: string[];
+  /** Same roles as roleIds, with names resolved — for the Add Staff Discord-role picker. Excludes @everyone. */
+  roles: GuildRoleSummary[];
 }
 
 function toSummary(member: import("discord.js").GuildMember): GuildMemberSummary {
+  const roles = member.roles.cache.filter((r) => r.name !== "@everyone").map((r) => ({ id: r.id, name: r.name }));
   return {
     id: member.id,
     username: member.user.username,
     displayName: member.displayName,
     avatarUrl: member.displayAvatarURL({ size: 64 }),
     roleIds: member.roles.cache.map((r) => r.id),
+    roles,
   };
 }
 

@@ -3,11 +3,17 @@ import { api, ApiError } from "../../lib/api";
 import { Modal, Button, Input, Select, Field, ErrorBanner } from "../../components/ui";
 import type { StaffRole } from "../../lib/types";
 
+interface DiscordRoleOption {
+  id: string;
+  name: string;
+}
+
 interface DiscordMemberResult {
   id: string;
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  roles: DiscordRoleOption[];
 }
 
 export function AddStaffModal({ roles, onClose, onAdded }: { roles: StaffRole[]; onClose: () => void; onAdded: () => void }) {
@@ -15,6 +21,7 @@ export function AddStaffModal({ roles, onClose, onAdded }: { roles: StaffRole[];
   const [results, setResults] = useState<DiscordMemberResult[]>([]);
   const [selected, setSelected] = useState<DiscordMemberResult | null>(null);
   const [roleId, setRoleId] = useState(roles[0]?.id ?? "");
+  const [discordRoleId, setDiscordRoleId] = useState("");
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +44,17 @@ export function AddStaffModal({ roles, onClose, onAdded }: { roles: StaffRole[];
     }
   };
 
+  const selectMember = (member: DiscordMemberResult) => {
+    setSelected(member);
+    setDiscordRoleId(member.roles[0]?.id ?? "");
+  };
+
   const submit = async () => {
     if (!selected || !roleId) return;
     setSubmitting(true);
     setError(null);
     try {
-      await api.post("/staff", { discordUserId: selected.id, roleId });
+      await api.post("/staff", { discordUserId: selected.id, roleId, discordRoleId: discordRoleId || undefined });
       onAdded();
       onClose();
     } catch (err) {
@@ -66,7 +78,7 @@ export function AddStaffModal({ roles, onClose, onAdded }: { roles: StaffRole[];
             {results.map((r) => (
               <button
                 key={r.id}
-                onClick={() => setSelected(r)}
+                onClick={() => selectMember(r)}
                 className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-border/50 ${
                   selected?.id === r.id ? "bg-accent/10" : ""
                 }`}
@@ -80,15 +92,35 @@ export function AddStaffModal({ roles, onClose, onAdded }: { roles: StaffRole[];
         )}
 
         {selected && (
-          <Field label="Staff Role">
-            <Select value={roleId} onChange={(e) => setRoleId(e.target.value)}>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <>
+            <Field label="Staff Role (platform permissions — internal use only)">
+              <Select value={roleId} onChange={(e) => setRoleId(e.target.value)}>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Discord Role (shown in Discord moderation messages)">
+              {selected.roles.length === 0 ? (
+                <p className="text-xs text-slate-500">This member doesn't hold any Discord roles yet.</p>
+              ) : (
+                <Select value={discordRoleId} onChange={(e) => setDiscordRoleId(e.target.value)}>
+                  {selected.roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+              <p className="mt-1 text-xs text-slate-600">
+                Separate from the Staff Role above — this is what appears in Discord log messages, not the platform
+                permission level.
+              </p>
+            </Field>
+          </>
         )}
 
         <ErrorBanner message={error} />

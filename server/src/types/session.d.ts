@@ -11,6 +11,12 @@ export interface AuthenticatedSessionUser {
   roleName: string;
   permissions: string[];
   discordRoleIds: string[];
+  /**
+   * The specific Discord role chosen to represent this person as staff —
+   * separate from roleName (the platform permission level). Used in Discord
+   * moderation messages; null until an admin assigns one via Add/Edit Staff.
+   */
+  discordRoleName: string | null;
   rolesSyncedAt: string;
 }
 

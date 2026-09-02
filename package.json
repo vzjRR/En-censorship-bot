@@ -2,7 +2,7 @@
   "name": "enclave-rp-moderation-platform",
   "private": true,
   "version": "1.0.0",
-  "description": "ENCLAVE RP Moderation Control Platform - Discord bot, OAuth2 dashboard and moderation API",
+  "description": "ENCLAVE RP Censorship Platform - Discord bot, OAuth2 dashboard and moderation API",
   "workspaces": [
     "server",
     "web"

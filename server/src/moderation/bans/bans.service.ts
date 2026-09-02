@@ -49,9 +49,25 @@ export async function createBan(input: CreateBanInput, actor: AuthenticatedSessi
   const { durationType, durationHours, expiresAt } = resolveDuration(input.durationType, issuedAt, input.customDurationHours);
 
   const channels = await getEffectiveChannels();
-  const evidenceRecords = await storeEvidenceFiles(input.evidenceFiles, {
+
+  // Built before the evidence upload so that, when the Discord storage
+  // driver is active, the evidence attaches directly to this announcement
+  // message instead of a separate message posted ahead of it.
+  const logContent = await banLogMessage({
+    fivemIdentifier: input.fivemIdentifier,
+    playerDiscordId: player.discordUserId,
+    playerName: player.playerName,
+    reason: input.reason,
+    issuedAt,
+    durationType,
+    durationHours,
+    staffDiscordId: actor.discordUserId,
+    staffRole: actor.discordRoleName ?? actor.roleName,
+  });
+
+  const { records: evidenceRecords, logResult: combinedLogResult } = await storeEvidenceFiles(input.evidenceFiles, {
     channelId: channels.banLog,
-    caption: `Evidence for ban — ${player.playerName}`,
+    content: logContent,
   });
 
   const banCode = await generateModerationCode("BAN", nowInDisplayZone().year);
@@ -108,19 +124,10 @@ export async function createBan(input: CreateBanInput, actor: AuthenticatedSessi
     metadata: { banCode, playerId: player.id, reason: input.reason, durationType },
   });
 
-  const logResult = await sendChannelMessage(
-    channels.banLog,
-    await banLogMessage({
-      fivemIdentifier: input.fivemIdentifier,
-      playerDiscordId: player.discordUserId,
-      playerName: player.playerName,
-      reason: input.reason,
-      issuedAt,
-      durationType,
-      durationHours,
-      staffDiscordId: actor.discordUserId,
-    }),
-  );
+  // If the evidence upload already sent the combined announcement+evidence
+  // message (Discord storage driver), reuse that result instead of sending
+  // a second, redundant message.
+  const logResult = combinedLogResult ?? (await sendChannelMessage(channels.banLog, logContent));
 
   const [updated] = await db
     .update(bans)
