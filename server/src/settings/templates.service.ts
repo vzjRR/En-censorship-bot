@@ -53,6 +53,8 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
     key: "warning",
     label: "Warning Issued",
     description: "Posted to the warning log channel whenever a warning is created.",
+    // staffRole is not shown by default here — per platform requirement it's
+    // only written into the staff login/logout messages, not every warning/ban.
     placeholders: ["playerRef", "warningNumber", "reason", "issuedDate", "duration", "staffName", "staffMention", "staffRole"],
     default: [
       // playerRef/staffMention are Discord mentions — never wrapped in
@@ -62,7 +64,7 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
       "**سبب الورنيج:** `{{reason}}`",
       "**تاريخ الإصدار:** `{{issuedDate}}`",
       "**مدة الورنيج:** `{{duration}}`",
-      "**اسم الرقابي:** {{staffMention}} (`{{staffRole}}`)",
+      "**اسم الرقابي:** {{staffMention}}",
     ].join("\n"),
   },
   ban: {
@@ -82,7 +84,7 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
       "**Reason:** `{{reason}}`",
       "**Date:** `{{date}}`",
       "**Band time:** `{{duration}}`",
-      "**Censorship name:** {{staffMention}} ({{staffRole}})",
+      "**Censorship name:** {{staffMention}}",
     ].join("\n"),
   },
   warning_revoked: {
@@ -95,7 +97,7 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
       "**اسم اللاعب:** {{playerRef}}",
       "**رقم الورنيج:** `warning {{warningNumber}}`",
       "**سبب الإلغاء:** `{{revokeReason}}`",
-      "**بواسطة:** {{staffMention}} ({{staffRole}})",
+      "**بواسطة:** {{staffMention}}",
       "**التاريخ:** `{{revokedDate}}`",
     ].join("\n"),
   },
@@ -108,7 +110,7 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
       "**Ban Revoked**",
       "**Player:** {{playerMention}}",
       "**Reason:** `{{revokeReason}}`",
-      "**By:** {{staffMention}} ({{staffRole}})",
+      "**By:** {{staffMention}}",
       "**Date:** `{{revokedDate}}`",
     ].join("\n"),
   },

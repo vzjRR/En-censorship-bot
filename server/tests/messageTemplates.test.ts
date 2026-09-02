@@ -48,7 +48,7 @@ describe("Fixed Discord message templates", () => {
     expect(msg).toContain("**رقم الورنيج:** `warning 1`");
     expect(msg).toContain("**سبب الورنيج:** `RDM`");
     expect(msg).toContain("**مدة الورنيج:** `7 أيام`");
-    expect(msg).toContain("**اسم الرقابي:** <@999999999999999999> (`Head Staff`)");
+    expect(msg).toContain("**اسم الرقابي:** <@999999999999999999>");
   });
 
   it("falls back to the player name when no Discord ID is known", async () => {
@@ -88,7 +88,7 @@ describe("Fixed Discord message templates", () => {
     expect(msg).toContain("**Reason:** `تكويت في نص سناريو`");
     expect(msg).toMatch(/\*\*Date:\*\* `\d{1,2}-\d{1,2}-\d{2}`/);
     expect(msg).toContain("**Band time:** `6 h`");
-    expect(msg).toContain("**Censorship name:** <@999999999999999999> (Head Staff)");
+    expect(msg).toContain("**Censorship name:** <@999999999999999999>");
   });
 
   it("omits the Player id line when staff didn't provide a FiveM identifier, and falls back to the player name when no Discord ID is known", async () => {
@@ -122,7 +122,7 @@ describe("Fixed Discord message templates", () => {
     expect(msg).toContain("**اسم اللاعب:** <@123456789012345678>");
     expect(msg).toContain("**رقم الورنيج:** `warning 1`");
     expect(msg).toContain("**سبب الإلغاء:** `Issued in error`");
-    expect(msg).toContain("**بواسطة:** <@999999999999999999> (Head Staff)");
+    expect(msg).toContain("**بواسطة:** <@999999999999999999>");
   });
 
   it("formats the ban-revoked message with the reason and who revoked it", async () => {
@@ -137,7 +137,7 @@ describe("Fixed Discord message templates", () => {
     });
     expect(msg).toContain("**Player:** Appealed Player");
     expect(msg).toContain("**Reason:** `Appeal accepted`");
-    expect(msg).toContain("**By:** <@999999999999999999> (Head Staff)");
+    expect(msg).toContain("**By:** <@999999999999999999>");
   });
 
   it("uses a custom template override when one has been saved, and reverts when cleared", async () => {
