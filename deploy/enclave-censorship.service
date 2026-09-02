@@ -21,6 +21,10 @@ Documentation=https://github.com/vzjRR/En-censorship-bot
 After=network-online.target postgresql.service
 Wants=network-online.target
 Requires=postgresql.service
+# Unit-start rate limiting belongs here, not in [Service] — a crash loop
+# gives up after 5 restarts within 60s rather than spinning forever.
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -37,8 +41,6 @@ RestartSec=3
 # starving Postgres, sshd, or the other Enclave services on this 1 GB box.
 MemoryHigh=256M
 MemoryMax=384M
-StartLimitBurst=5
-StartLimitIntervalSec=60
 
 # Only the local evidence-upload fallback (EVIDENCE_STORAGE_DRIVER=local,
 # off by default — the default driver stores evidence on Discord's CDN
