@@ -79,11 +79,20 @@ export async function grantMemberRole(discordUserId: string, roleId: string): Pr
   try {
     const guild = await getModerationGuild();
     const member = await guild.members.fetch(discordUserId).catch(() => null);
-    if (!member) return { ok: false, error: "Member not found in the moderation guild." };
+    if (!member) {
+      const error = "Member not found in the moderation guild.";
+      console.error(`[punishment-role] failed to grant role ${roleId} to ${discordUserId}: ${error}`);
+      return { ok: false, error };
+    }
     await member.roles.add(roleId);
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    const error = err instanceof Error ? err.message : String(err);
+    // Common causes: the bot lacks "Manage Roles", or the bot's own
+    // highest role sits BELOW this role in Server Settings → Roles (Discord
+    // refuses to assign a role the bot can't itself outrank).
+    console.error(`[punishment-role] failed to grant role ${roleId} to ${discordUserId}: ${error}`);
+    return { ok: false, error };
   }
 }
 
@@ -91,11 +100,17 @@ export async function revokeMemberRole(discordUserId: string, roleId: string): P
   try {
     const guild = await getModerationGuild();
     const member = await guild.members.fetch(discordUserId).catch(() => null);
-    if (!member) return { ok: false, error: "Member not found in the moderation guild." };
+    if (!member) {
+      const error = "Member not found in the moderation guild.";
+      console.error(`[punishment-role] failed to revoke role ${roleId} from ${discordUserId}: ${error}`);
+      return { ok: false, error };
+    }
     await member.roles.remove(roleId);
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    const error = err instanceof Error ? err.message : String(err);
+    console.error(`[punishment-role] failed to revoke role ${roleId} from ${discordUserId}: ${error}`);
+    return { ok: false, error };
   }
 }
 

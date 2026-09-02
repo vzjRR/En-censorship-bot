@@ -145,7 +145,26 @@ export async function createBan(input: CreateBanInput, actor: AuthenticatedSessi
     const rolesConfig = await getPunishmentRolesConfig();
     if (rolesConfig.banRole) {
       const grant = await grantMemberRole(player.discordUserId, rolesConfig.banRole.discordRoleId);
-      if (grant.ok) punishmentRoleId = rolesConfig.banRole.discordRoleId;
+      if (grant.ok) {
+        punishmentRoleId = rolesConfig.banRole.discordRoleId;
+      } else {
+        // Surfaced in Audit Logs (not just server logs) so the failure is
+        // diagnosable from the dashboard — common causes: the bot lacks
+        // "Manage Roles", or its own highest role sits below this role.
+        await recordAuditLog({
+          actorDiscordId: actor.discordUserId,
+          actorName: actor.displayName,
+          action: AUDIT_ACTIONS.PUNISHMENT_ROLE_GRANT_FAILED,
+          targetType: "ban",
+          targetId: created.id,
+          metadata: {
+            discordRoleId: rolesConfig.banRole.discordRoleId,
+            discordRoleName: rolesConfig.banRole.discordRoleName,
+            playerDiscordId: player.discordUserId,
+            error: grant.error,
+          },
+        });
+      }
     }
   }
 

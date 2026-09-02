@@ -121,6 +121,60 @@ describe("Punishment role grant/revoke on warnings and bans", () => {
     vi.resetModules();
   });
 
+  it("records an audit log entry (not just a silent failure) when the Discord role grant fails", async () => {
+    vi.resetModules();
+
+    vi.doMock("../src/bot/services/memberService.js", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("../src/bot/services/memberService.js")>();
+      return {
+        ...actual,
+        grantMemberRole: vi.fn(async () => ({ ok: false, error: "Missing Permissions" })),
+      };
+    });
+
+    const { setPunishmentRolesConfig } = await import("../src/settings/punishmentRoles.service.js");
+    await setPunishmentRolesConfig(
+      { warningRoles: [{ warningNumber: 1, discordRoleId: "999888777666555444", discordRoleName: "Warning 1" }], banRole: null },
+      "tester",
+    );
+
+    const roles = await seedDefaultRoles();
+    const staff = await createStaffMember(roles.staff);
+    await putOnDuty(staff);
+    const { createWarning } = await import("../src/moderation/warnings/warnings.service.js");
+    const discordUserId = nextDiscordId();
+
+    const warning = await createWarning(
+      { playerDiscordId: discordUserId, playerName: "GrantFailPlayer", reason: "Test", durationType: "7_days", evidenceFiles: [] },
+      {
+        discordUserId: staff.discordUserId,
+        discordUsername: staff.discordUsername,
+        displayName: staff.displayName,
+        avatarHash: null,
+        isPlatformOwner: false,
+        staffId: staff.id,
+        roleKey: "staff",
+        roleName: "Staff",
+        permissions: [],
+        discordRoleIds: [],
+        discordRoleName: null,
+        discordRoleId: null,
+        rolesSyncedAt: new Date().toISOString(),
+      },
+    );
+
+    expect(warning.punishmentRoleId).toBeNull();
+
+    const { queryAuditLogs } = await import("../src/audit/audit.service.js");
+    const logs = await queryAuditLogs({ action: "PUNISHMENT_ROLE_GRANT_FAILED", targetId: warning.id });
+    expect(logs.length).toBe(1);
+    expect((logs[0].metadata as any).error).toBe("Missing Permissions");
+    expect((logs[0].metadata as any).discordRoleId).toBe("999888777666555444");
+
+    vi.doUnmock("../src/bot/services/memberService.js");
+    vi.resetModules();
+  });
+
   it("grants the configured ban role and removes it when the ban expires", async () => {
     vi.resetModules();
     const granted: Array<{ discordUserId: string; roleId: string }> = [];

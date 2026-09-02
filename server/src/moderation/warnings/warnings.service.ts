@@ -154,7 +154,21 @@ export async function createWarning(input: CreateWarningInput, actor: Authentica
     const rule = findWarningRoleRule(rolesConfig, warningNumber);
     if (rule) {
       const grant = await grantMemberRole(player.discordUserId, rule.discordRoleId);
-      if (grant.ok) punishmentRoleId = rule.discordRoleId;
+      if (grant.ok) {
+        punishmentRoleId = rule.discordRoleId;
+      } else {
+        // Surfaced in Audit Logs (not just server logs) so the failure is
+        // diagnosable from the dashboard — common causes: the bot lacks
+        // "Manage Roles", or its own highest role sits below this role.
+        await recordAuditLog({
+          actorDiscordId: actor.discordUserId,
+          actorName: actor.displayName,
+          action: AUDIT_ACTIONS.PUNISHMENT_ROLE_GRANT_FAILED,
+          targetType: "warning",
+          targetId: created.id,
+          metadata: { discordRoleId: rule.discordRoleId, discordRoleName: rule.discordRoleName, playerDiscordId: player.discordUserId, error: grant.error },
+        });
+      }
     }
   }
 
