@@ -15,6 +15,7 @@ import {
   removeStaffMember,
   findStaffById,
   setStaffDiscordRole,
+  StaffValidationError,
 } from "../../staff/staff.service.js";
 import { listStaffRoles, createStaffRole, updateStaffRole, deleteStaffRole } from "../../staff/roles.service.js";
 import { ALL_PERMISSIONS, PLATFORM_OWNER_ROLE_KEY } from "../../auth/permissions.js";
@@ -198,6 +199,7 @@ staffRouter.post(
       });
       res.status(201).json({ staff: created });
     } catch (err) {
+      if (err instanceof StaffValidationError) return next(new ApiError(400, "validation_error", err.message));
       next(err);
     }
   },
@@ -272,6 +274,7 @@ staffRouter.patch(
       });
       res.json({ staff: updated });
     } catch (err) {
+      if (err instanceof StaffValidationError) return next(new ApiError(400, "validation_error", err.message));
       next(err);
     }
   },

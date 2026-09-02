@@ -4,6 +4,9 @@ import { staffMembers, staffRoles, type StaffMember } from "../database/schema/i
 import { recordAuditLog, AUDIT_ACTIONS } from "../audit/audit.service.js";
 import { ensurePlatformOwnerRole } from "./roles.service.js";
 
+/** A rejected business rule (duplicate staff member, singleton role already held) — not a server bug, so routes map this to a 400 instead of a generic 500. */
+export class StaffValidationError extends Error {}
+
 export interface StaffMemberWithRole extends StaffMember {
   role: {
     id: string;
@@ -74,7 +77,7 @@ async function assertRoleSingleton(roleId: string, excludeStaffId?: string): Pro
   });
   const otherHolder = holders.find((h) => h.id !== excludeStaffId);
   if (otherHolder) {
-    throw new Error(
+    throw new StaffValidationError(
       `Only one active "${role.name}" is allowed, and ${otherHolder.displayName} already holds it. Reassign or remove them first.`,
     );
   }
@@ -97,7 +100,7 @@ export async function addStaffMember(input: AddStaffInput): Promise<StaffMemberW
     where: eq(staffMembers.discordUserId, input.discordUserId),
   });
   if (existing) {
-    throw new Error("This Discord member is already a staff member.");
+    throw new StaffValidationError("This Discord member is already a staff member.");
   }
 
   await assertRoleSingleton(input.roleId);

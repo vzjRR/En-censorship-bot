@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
 import { buildApp, seedDefaultRoles, createStaffMember, sessionUserFor, loginAs, nextDiscordId } from "./helpers.js";
 
@@ -85,6 +85,52 @@ describe("Staff management", () => {
     await expect(changeStaffRole(staffMember.id, roles.deputy_manager, { discordId: "1", name: "Tester" })).rejects.toThrow(
       /only one active/i,
     );
+  });
+
+  it("returns a clear 400 (not a generic 500) via the HTTP route when adding a second Manager", async () => {
+    vi.resetModules();
+    const newDiscordId = nextDiscordId();
+
+    vi.doMock("../src/bot/services/memberService.js", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("../src/bot/services/memberService.js")>();
+      return {
+        ...actual,
+        fetchGuildMember: vi.fn(async (discordUserId: string) => ({
+          id: discordUserId,
+          username: "second_manager",
+          displayName: "Second Manager",
+          avatarUrl: null,
+          roleIds: [],
+          roles: [],
+        })),
+      };
+    });
+
+    const { buildApp: freshBuildApp, seedDefaultRoles: freshSeedDefaultRoles, createStaffMember: freshCreateStaffMember, sessionUserFor: freshSessionUserFor, loginAs: freshLoginAs } =
+      await import("./helpers.js");
+
+    const app = freshBuildApp();
+    const roles = await freshSeedDefaultRoles();
+    await freshCreateStaffMember(roles.manager);
+    // Direct DB insert, bypassing the service's singleton check, purely to
+    // set up an actor with real staff.manage permission (requireAuth
+    // refreshes permissions from this DB role on every request).
+    const adder = await freshCreateStaffMember(roles.manager, { discordUserId: nextDiscordId() });
+
+    const agent = request.agent(app);
+    const csrf = await freshLoginAs(agent, freshSessionUserFor(adder, "manager", "Manager", ["staff.view", "staff.manage"]));
+
+    const res = await agent
+      .post("/api/staff")
+      .set("X-CSRF-Token", csrf)
+      .send({ discordUserId: newDiscordId, roleId: roles.manager });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("validation_error");
+    expect(res.body.message).toMatch(/only one active/i);
+
+    vi.doUnmock("../src/bot/services/memberService.js");
+    vi.resetModules();
   });
 
   it("allows reassigning the same Manager slot to itself and allows a normal Staff role to have many holders", async () => {
