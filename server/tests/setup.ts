@@ -5,11 +5,11 @@ process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? "postgres://enclave:enclave_dev_password@localhost:5432/enclave_rp_test";
 process.env.SESSION_SECRET = "test_session_secret_at_least_16_characters_long";
 process.env.DISCORD_BOT_TOKEN = "test_bot_token_placeholder";
-process.env.DISCORD_CLIENT_ID = "1544474462630449162";
+process.env.DISCORD_CLIENT_ID = "1544434302308319293";
 process.env.DISCORD_CLIENT_SECRET = "test_client_secret_placeholder";
 process.env.DISCORD_GUILD_ID = "1000000000000000000";
 process.env.PLATFORM_OWNER_ID = "1303195553068482591";
-process.env.BOT_ID = "1544474462630449162";
+process.env.BOT_ID = "1544434302308319293";
 process.env.STAFF_LOG_CHANNEL_ID = "1539101062152069202";
 process.env.WARNING_CHANNEL_ID = "1539103436308611082";
 process.env.BAN_CHANNEL_ID = "1539102903745249372";
