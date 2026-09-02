@@ -69,19 +69,71 @@ export async function banLogMessage(params: {
   durationType: DurationType;
   durationHours: number | null;
   staffDiscordId: string;
+  staffName: string;
   staffRole: string;
 }): Promise<string> {
   const templates = await getEffectiveTemplates();
-  const identifier = params.fivemIdentifier?.trim() || params.playerDiscordId || params.playerName;
+  // Shown only when staff actually typed a FiveM server ID — never falls
+  // back to the Discord ID or player name, per platform requirement.
+  const identifier = params.fivemIdentifier?.trim() ?? "";
+  const identifierLine = identifier ? `**Player id:** \`${identifier}\`\n` : "";
   const playerMention = params.playerDiscordId ? `<@${params.playerDiscordId}>` : params.playerName;
   const durationLabel = formatDurationShort(params.durationType, params.durationHours);
   return renderTemplate(templates.ban, {
     identifier,
+    identifierLine,
     playerMention,
+    playerName: params.playerName,
     duration: durationLabel,
     reason: params.reason,
     date: formatBanShortDate(params.issuedAt),
     staffMention: `<@${params.staffDiscordId}>`,
+    staffName: params.staffName,
+    staffRole: params.staffRole,
+  });
+}
+
+export async function warningRevokedMessage(params: {
+  playerDiscordId?: string | null;
+  playerName: string;
+  warningNumber: number;
+  revokeReason: string;
+  revokedAt: Date;
+  staffDiscordId: string;
+  staffName: string;
+  staffRole: string;
+}): Promise<string> {
+  const templates = await getEffectiveTemplates();
+  const playerRef = params.playerDiscordId ? `<@${params.playerDiscordId}>` : params.playerName;
+  return renderTemplate(templates.warning_revoked, {
+    playerRef,
+    warningNumber: String(params.warningNumber),
+    revokeReason: params.revokeReason,
+    revokedDate: formatDiscordDateTime(params.revokedAt),
+    staffMention: `<@${params.staffDiscordId}>`,
+    staffName: params.staffName,
+    staffRole: params.staffRole,
+  });
+}
+
+export async function banRevokedMessage(params: {
+  playerDiscordId?: string | null;
+  playerName: string;
+  revokeReason: string;
+  revokedAt: Date;
+  staffDiscordId: string;
+  staffName: string;
+  staffRole: string;
+}): Promise<string> {
+  const templates = await getEffectiveTemplates();
+  const playerMention = params.playerDiscordId ? `<@${params.playerDiscordId}>` : params.playerName;
+  return renderTemplate(templates.ban_revoked, {
+    playerMention,
+    playerName: params.playerName,
+    revokeReason: params.revokeReason,
+    revokedDate: formatDiscordDateTime(params.revokedAt),
+    staffMention: `<@${params.staffDiscordId}>`,
+    staffName: params.staffName,
     staffRole: params.staffRole,
   });
 }

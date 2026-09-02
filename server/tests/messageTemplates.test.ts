@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { staffLoginMessage, staffLogoutMessage, warningLogMessage, banLogMessage } from "../src/bot/services/messageTemplates.js";
+import {
+  staffLoginMessage,
+  staffLogoutMessage,
+  warningLogMessage,
+  banLogMessage,
+  warningRevokedMessage,
+  banRevokedMessage,
+} from "../src/bot/services/messageTemplates.js";
 
 describe("Fixed Discord message templates", () => {
   it("formats the staff login message with only the dynamic fields changing", async () => {
@@ -59,7 +66,7 @@ describe("Fixed Discord message templates", () => {
     expect(msg).toContain("**مدة الورنيج:** `دائم`");
   });
 
-  it("formats the ban message with the exact required layout, mentioning the player and staff (with their Discord role)", async () => {
+  it("formats the ban message with the exact required layout, showing names (not just IDs) for player and staff, and the FiveM ID only when provided", async () => {
     const msg = await banLogMessage({
       fivemIdentifier: "steam:1100001",
       playerDiscordId: "123456789012345678",
@@ -69,19 +76,20 @@ describe("Fixed Discord message templates", () => {
       durationType: "6_hours",
       durationHours: 6,
       staffDiscordId: "999999999999999999",
+      staffName: "Staff Name",
       staffRole: "Head Staff",
     });
 
     expect(msg).toContain("**Player id:** `steam:1100001`");
-    expect(msg).toContain("**Player:** `<@123456789012345678>`");
-    expect(msg).toContain("**Band:** `6 h`");
+    expect(msg).toContain("**Player:** <@123456789012345678> `Player`");
+    expect(msg).not.toContain("**Band:**");
     expect(msg).toContain("**Reason:** `تكويت في نص سناريو`");
     expect(msg).toMatch(/\*\*Date:\*\* `\d{1,2}-\d{1,2}-\d{2}`/);
     expect(msg).toContain("**Band time:** `6 h`");
-    expect(msg).toContain("**Censorship name:** `<@999999999999999999> (Head Staff)`");
+    expect(msg).toContain("**Censorship name:** <@999999999999999999> `Staff Name` (Head Staff)");
   });
 
-  it("falls back to the player name in the ban mention when no Discord ID is known", async () => {
+  it("omits the Player id line when staff didn't provide a FiveM identifier, and falls back to the player name when no Discord ID is known", async () => {
     const msg = await banLogMessage({
       fivemIdentifier: null,
       playerDiscordId: null,
@@ -91,9 +99,43 @@ describe("Fixed Discord message templates", () => {
       durationType: "PERMANENT",
       durationHours: null,
       staffDiscordId: "999999999999999999",
+      staffName: "Staff Name",
       staffRole: "Head Staff",
     });
-    expect(msg).toContain("**Player:** `No Discord Player`");
+    expect(msg).not.toContain("Player id");
+    expect(msg).toContain("**Player:** No Discord Player `No Discord Player`");
+  });
+
+  it("formats the warning-revoked message with the reason and who revoked it", async () => {
+    const msg = await warningRevokedMessage({
+      playerDiscordId: "123456789012345678",
+      playerName: "Fallback Name",
+      warningNumber: 1,
+      revokeReason: "Issued in error",
+      revokedAt: new Date("2026-08-19T09:00:00Z"),
+      staffDiscordId: "999999999999999999",
+      staffName: "Staff Name",
+      staffRole: "Head Staff",
+    });
+    expect(msg).toContain("**اسم اللاعب:** `<@123456789012345678>`");
+    expect(msg).toContain("**رقم الورنيج:** `warning 1`");
+    expect(msg).toContain("**سبب الإلغاء:** `Issued in error`");
+    expect(msg).toContain("**بواسطة:** <@999999999999999999> `Staff Name` (Head Staff)");
+  });
+
+  it("formats the ban-revoked message with the reason and who revoked it", async () => {
+    const msg = await banRevokedMessage({
+      playerDiscordId: null,
+      playerName: "Appealed Player",
+      revokeReason: "Appeal accepted",
+      revokedAt: new Date("2026-08-19T09:00:00Z"),
+      staffDiscordId: "999999999999999999",
+      staffName: "Staff Name",
+      staffRole: "Head Staff",
+    });
+    expect(msg).toContain("**Player:** Appealed Player `Appealed Player`");
+    expect(msg).toContain("**Reason:** `Appeal accepted`");
+    expect(msg).toContain("**By:** <@999999999999999999> `Staff Name` (Head Staff)");
   });
 
   it("uses a custom template override when one has been saved, and reverts when cleared", async () => {

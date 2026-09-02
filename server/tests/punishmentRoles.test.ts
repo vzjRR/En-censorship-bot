@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
-import { buildApp, seedDefaultRoles, createStaffMember, sessionUserFor, loginAs, nextDiscordId } from "./helpers.js";
+import { buildApp, seedDefaultRoles, createStaffMember, sessionUserFor, loginAs, nextDiscordId, putOnDuty } from "./helpers.js";
 
 describe("Punishment roles config (Settings → owner only)", () => {
   it("rejects a non-owner, even a Manager holding settings.manage", async () => {
@@ -83,6 +83,7 @@ describe("Punishment role grant/revoke on warnings and bans", () => {
 
     const roles = await seedDefaultRoles();
     const staff = await createStaffMember(roles.staff);
+    await putOnDuty(staff);
     const { createWarning, revokeWarning } = await import("../src/moderation/warnings/warnings.service.js");
     const discordUserId = nextDiscordId();
 
@@ -100,6 +101,7 @@ describe("Punishment role grant/revoke on warnings and bans", () => {
         permissions: [],
         discordRoleIds: [],
         discordRoleName: null,
+        discordRoleId: null,
         rolesSyncedAt: new Date().toISOString(),
       },
     );
@@ -111,7 +113,7 @@ describe("Punishment role grant/revoke on warnings and bans", () => {
     await revokeWarning({
       warningId: warning.id,
       reason: "oops",
-      actor: { discordUserId: staff.discordUserId, displayName: staff.displayName, staffId: staff.id },
+      actor: { discordUserId: staff.discordUserId, displayName: staff.displayName, staffId: staff.id, roleName: "Staff", discordRoleName: null },
     });
     expect(revoked).toEqual([{ discordUserId, roleId: "999888777666555444" }]);
 
@@ -147,6 +149,7 @@ describe("Punishment role grant/revoke on warnings and bans", () => {
 
     const roles = await seedDefaultRoles();
     const staff = await createStaffMember(roles.staff);
+    await putOnDuty(staff);
     const { createBan, expireOverdueBans } = await import("../src/moderation/bans/bans.service.js");
     const { db } = await import("../src/database/client.js");
     const { bans } = await import("../src/database/schema/index.js");
@@ -175,6 +178,7 @@ describe("Punishment role grant/revoke on warnings and bans", () => {
         permissions: [],
         discordRoleIds: [],
         discordRoleName: null,
+        discordRoleId: null,
         rolesSyncedAt: new Date().toISOString(),
       },
     );

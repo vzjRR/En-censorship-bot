@@ -17,6 +17,8 @@ export interface AuthenticatedSessionUser {
    * moderation messages; null until an admin assigns one via Add/Edit Staff.
    */
   discordRoleName: string | null;
+  /** The Discord role ID behind discordRoleName — used to build a role mention (<@&id>) so it renders in the role's own color. */
+  discordRoleId: string | null;
   rolesSyncedAt: string;
 }
 

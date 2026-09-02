@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import request from "supertest";
-import { buildApp, seedDefaultRoles, createStaffMember, sessionUserFor, loginAs } from "./helpers.js";
+import { buildApp, seedDefaultRoles, createStaffMember, sessionUserFor, loginAs, putOnDuty } from "./helpers.js";
 
 // Minimal valid PNG signature — evidence/validate.ts inspects magic bytes, not the extension/MIME type.
 const FAKE_PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32, 0)]);
@@ -67,6 +67,7 @@ describe("Owner-only data wipe", () => {
     const app = buildApp();
     const { agent, csrf, owner } = await loginOwner(app);
 
+    await putOnDuty(owner);
     const { createWarning } = await import("../src/moderation/warnings/warnings.service.js");
     const { createBan } = await import("../src/moderation/bans/bans.service.js");
     const actor = {
@@ -81,6 +82,7 @@ describe("Owner-only data wipe", () => {
       permissions: [],
       discordRoleIds: [],
       discordRoleName: null,
+      discordRoleId: null,
       rolesSyncedAt: new Date().toISOString(),
     };
 

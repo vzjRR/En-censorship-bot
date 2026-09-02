@@ -41,8 +41,13 @@ export async function listStaffSessionHistory(staffUserId?: string, limit = 100)
  * login message. A Discord send failure never rolls back the duty session —
  * it's recorded in staff_sessions.loginMessageId as null / logged instead.
  */
+/** Discord role MENTION only — never the platform permission role — so it renders in the role's own Discord color. Empty when no Discord role has been assigned yet. */
+function discordRoleMention(user: Pick<AuthenticatedSessionUser, "discordRoleId">): string {
+  return user.discordRoleId ? `<@&${user.discordRoleId}>` : "—";
+}
+
 export async function startDuty(
-  user: Pick<AuthenticatedSessionUser, "staffId" | "discordUserId" | "displayName" | "roleName" | "discordRoleName">,
+  user: Pick<AuthenticatedSessionUser, "staffId" | "discordUserId" | "displayName" | "roleName" | "discordRoleId">,
 ): Promise<StaffSession> {
   if (!user.staffId) {
     throw new Error("No staff record is associated with this account yet. Please try logging in again.");
@@ -72,15 +77,15 @@ export async function startDuty(
     throw err;
   }
 
-  // The message shows the person's DISCORD role, never the platform
-  // permission role (which stays internal to the dashboard) — falls back to
-  // the platform role name only if no Discord role has been assigned yet.
+  // The message shows the person's DISCORD role ONLY (never the platform
+  // permission role, which stays internal to the dashboard), written as a
+  // role mention so Discord renders it in that role's own color.
   const channels = await getEffectiveChannels();
   const result = await sendChannelMessage(
     channels.staffLog,
     await staffLoginMessage({
       staffName: user.displayName,
-      staffRole: user.discordRoleName ?? user.roleName,
+      staffRole: discordRoleMention(user),
       loginTime: created.loginTime,
     }),
   );
@@ -102,7 +107,7 @@ export async function startDuty(
 }
 
 export async function endDuty(
-  user: Pick<AuthenticatedSessionUser, "discordUserId" | "displayName" | "roleName" | "discordRoleName">,
+  user: Pick<AuthenticatedSessionUser, "discordUserId" | "displayName" | "roleName" | "discordRoleId">,
   notes?: string | null,
 ): Promise<StaffSession> {
   const active = await getActiveDutySession(user.discordUserId);
@@ -126,7 +131,7 @@ export async function endDuty(
     channels.staffLog,
     await staffLogoutMessage({
       staffName: user.displayName,
-      staffRole: user.discordRoleName ?? user.roleName,
+      staffRole: discordRoleMention(user),
       logoutTime,
       notes,
     }),

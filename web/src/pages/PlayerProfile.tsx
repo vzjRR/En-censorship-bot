@@ -72,21 +72,23 @@ export function PlayerProfile() {
         {data.warnings.length === 0 ? (
           <EmptyState message="No warnings." />
         ) : (
-          <table className="w-full text-left text-sm">
-            <tbody className="divide-y divide-surface-border">
-              {data.warnings.map((w) => (
-                <tr key={w.id}>
-                  <td className="py-2 pr-4 font-mono text-xs">{w.warningCode}</td>
-                  <td className="py-2 pr-4">#{w.warningNumber}</td>
-                  <td className="py-2 pr-4">{w.reason}</td>
-                  <td className="py-2 pr-4 text-slate-400">{formatDateTime(w.issuedAt)}</td>
-                  <td className="py-2 pr-4">
-                    <StatusBadge status={w.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <tbody className="divide-y divide-surface-border">
+                {data.warnings.map((w) => (
+                  <tr key={w.id}>
+                    <td className="py-2 pr-4 font-mono text-xs">{w.warningCode}</td>
+                    <td className="py-2 pr-4">#{w.warningNumber}</td>
+                    <td className="py-2 pr-4">{w.reason}</td>
+                    <td className="py-2 pr-4 text-slate-400">{formatDateTime(w.issuedAt)}</td>
+                    <td className="py-2 pr-4">
+                      <StatusBadge status={w.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
 
@@ -94,20 +96,22 @@ export function PlayerProfile() {
         {data.bans.length === 0 ? (
           <EmptyState message="No bans." />
         ) : (
-          <table className="w-full text-left text-sm">
-            <tbody className="divide-y divide-surface-border">
-              {data.bans.map((b) => (
-                <tr key={b.id}>
-                  <td className="py-2 pr-4 font-mono text-xs">{b.banCode}</td>
-                  <td className="py-2 pr-4">{b.reason}</td>
-                  <td className="py-2 pr-4 text-slate-400">{formatDateTime(b.issuedAt)}</td>
-                  <td className="py-2 pr-4">
-                    <StatusBadge status={b.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <tbody className="divide-y divide-surface-border">
+                {data.bans.map((b) => (
+                  <tr key={b.id}>
+                    <td className="py-2 pr-4 font-mono text-xs">{b.banCode}</td>
+                    <td className="py-2 pr-4">{b.reason}</td>
+                    <td className="py-2 pr-4 text-slate-400">{formatDateTime(b.issuedAt)}</td>
+                    <td className="py-2 pr-4">
+                      <StatusBadge status={b.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
     </div>

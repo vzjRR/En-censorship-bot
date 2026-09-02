@@ -45,7 +45,7 @@ export function AuditLogs() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-lg font-semibold text-slate-100">Audit Logs</h1>
         {hasPermission("data.export") && (
           <a href={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/audit?format=csv`} target="_blank" rel="noreferrer">

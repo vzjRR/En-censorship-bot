@@ -142,7 +142,7 @@ export const DURATION_OPTIONS_BAN = [
 export const WARNING_REASON_PRESETS = ["RDM", "VDM", "Fail RP", "Toxicity", "Power Gaming"];
 
 export interface MessageTemplate {
-  key: "staff_login" | "staff_logout" | "warning" | "ban";
+  key: "staff_login" | "staff_logout" | "warning" | "ban" | "warning_revoked" | "ban_revoked";
   label: string;
   description: string;
   placeholders: string[];

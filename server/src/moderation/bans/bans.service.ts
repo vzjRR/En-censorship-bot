@@ -7,9 +7,10 @@ import { generateModerationCode } from "../../ids/idGenerator.js";
 import { storeEvidenceFiles, type EvidenceFileInput } from "../../evidence/storage.js";
 import { sendChannelMessage } from "../../bot/services/logService.js";
 import { grantMemberRole, revokeMemberRole } from "../../bot/services/memberService.js";
-import { banLogMessage } from "../../bot/services/messageTemplates.js";
+import { banLogMessage, banRevokedMessage } from "../../bot/services/messageTemplates.js";
 import { getEffectiveChannels } from "../../settings/runtimeConfig.service.js";
 import { getPunishmentRolesConfig } from "../../settings/punishmentRoles.service.js";
+import { assertOnDuty } from "../dutyGuard.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../../audit/audit.service.js";
 import { nowInDisplayZone } from "../../utils/timezone.js";
 import type { AuthenticatedSessionUser } from "../../types/session.js";
@@ -29,6 +30,9 @@ export interface CreateBanInput {
 }
 
 export async function createBan(input: CreateBanInput, actor: AuthenticatedSessionUser): Promise<Ban> {
+  // Must be on duty ("دخول الرقابة") to issue a ban — checked first, before any other work.
+  await assertOnDuty(actor.discordUserId);
+
   // Ban evidence is mandatory — enforced server-side, never trusting the
   // frontend's disabled-button UX alone.
   if (!input.evidenceFiles || input.evidenceFiles.length === 0) {
@@ -64,6 +68,7 @@ export async function createBan(input: CreateBanInput, actor: AuthenticatedSessi
     durationType,
     durationHours,
     staffDiscordId: actor.discordUserId,
+    staffName: actor.displayName,
     staffRole: actor.discordRoleName ?? actor.roleName,
   });
 
@@ -160,7 +165,7 @@ export async function createBan(input: CreateBanInput, actor: AuthenticatedSessi
 export interface RevokeBanInput {
   banId: string;
   reason: string;
-  actor: Pick<AuthenticatedSessionUser, "discordUserId" | "displayName" | "staffId">;
+  actor: Pick<AuthenticatedSessionUser, "discordUserId" | "displayName" | "staffId" | "roleName" | "discordRoleName">;
 }
 
 export async function revokeBan(input: RevokeBanInput): Promise<Ban> {
@@ -192,6 +197,21 @@ export async function revokeBan(input: RevokeBanInput): Promise<Ban> {
   if (existing.punishmentRoleId && existing.discordUserId) {
     await revokeMemberRole(existing.discordUserId, existing.punishmentRoleId);
   }
+
+  // Notification step — allowed to fail without affecting the revocation itself.
+  const channels = await getEffectiveChannels();
+  await sendChannelMessage(
+    channels.banLog,
+    await banRevokedMessage({
+      playerDiscordId: existing.discordUserId,
+      playerName: existing.playerName,
+      revokeReason: input.reason,
+      revokedAt: updated.revokedAt ?? new Date(),
+      staffDiscordId: input.actor.discordUserId,
+      staffName: input.actor.displayName,
+      staffRole: input.actor.discordRoleName ?? input.actor.roleName,
+    }),
+  );
 
   return updated;
 }

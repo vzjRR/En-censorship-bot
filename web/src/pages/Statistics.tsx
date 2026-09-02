@@ -70,24 +70,26 @@ export function Statistics() {
         {data.staffLeaderboard.length === 0 ? (
           <EmptyState message="No activity yet." />
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-xs uppercase text-slate-500">
-                <th className="pb-2">Staff</th>
-                <th className="pb-2">Warnings</th>
-                <th className="pb-2">Bans</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-border">
-              {data.staffLeaderboard.map((s) => (
-                <tr key={s.staffName}>
-                  <td className="py-2">{s.staffName}</td>
-                  <td className="py-2">{s.warningsIssued}</td>
-                  <td className="py-2">{s.bansIssued}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-xs uppercase text-slate-500">
+                  <th className="pb-2">Staff</th>
+                  <th className="pb-2">Warnings</th>
+                  <th className="pb-2">Bans</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-surface-border">
+                {data.staffLeaderboard.map((s) => (
+                  <tr key={s.staffName}>
+                    <td className="py-2">{s.staffName}</td>
+                    <td className="py-2">{s.warningsIssued}</td>
+                    <td className="py-2">{s.bansIssued}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
 

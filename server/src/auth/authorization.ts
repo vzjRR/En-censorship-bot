@@ -65,6 +65,7 @@ export async function resolveAccess(profile: DiscordOAuthProfile, ipAddress: str
   if (isPlatformOwner) {
     let staffId: string | null = null;
     let discordRoleName: string | null = null;
+    let discordRoleId: string | null = null;
     try {
       const ownerRecord = await ensurePlatformOwnerStaffRecord({
         discordUserId: profile.id,
@@ -73,6 +74,7 @@ export async function resolveAccess(profile: DiscordOAuthProfile, ipAddress: str
       });
       staffId = ownerRecord.id;
       discordRoleName = ownerRecord.discordRoleName;
+      discordRoleId = ownerRecord.discordRoleId;
       if (discordRoleIds.length) await syncStaffDiscordRoles(ownerRecord.id, discordRoleIds);
     } catch (err) {
       // Bookkeeping only — the owner still gets full access even if the
@@ -92,6 +94,7 @@ export async function resolveAccess(profile: DiscordOAuthProfile, ipAddress: str
       permissions: ALL_PERMISSIONS as Permission[],
       discordRoleIds,
       discordRoleName,
+      discordRoleId,
       rolesSyncedAt: new Date().toISOString(),
     };
     return { status: "authorized", user };
@@ -128,6 +131,7 @@ export async function resolveAccess(profile: DiscordOAuthProfile, ipAddress: str
     permissions: staff.role.permissions as Permission[],
     discordRoleIds,
     discordRoleName: staff.discordRoleName,
+    discordRoleId: staff.discordRoleId,
     rolesSyncedAt: new Date().toISOString(),
   };
   return { status: "authorized", user };

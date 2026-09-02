@@ -9,6 +9,7 @@ import { writeRateLimit } from "../middleware/rateLimit.js";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import { EvidenceValidationError, EvidenceStorageError } from "../../evidence/storage.js";
+import { NotOnDutyError } from "../../moderation/dutyGuard.js";
 import { DURATION_TYPES } from "../../moderation/duration.js";
 import {
   createWarning,
@@ -74,6 +75,7 @@ warningsRouter.post(
 
       res.status(201).json({ warning });
     } catch (err) {
+      if (err instanceof NotOnDutyError) return next(new ApiError(403, "not_on_duty", err.message));
       if (err instanceof EvidenceValidationError) return next(new ApiError(400, "invalid_evidence", err.message));
       if (err instanceof EvidenceStorageError) return next(new ApiError(502, "evidence_storage_failed", err.message));
       next(err);

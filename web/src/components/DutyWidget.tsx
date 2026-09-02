@@ -82,7 +82,7 @@ export function DutyWidget() {
       </div>
 
       {showLogout && (
-        <div className="absolute right-0 z-10 mt-2 w-72 rounded-md border border-surface-border bg-surface-raised p-3 shadow-xl">
+        <div className="absolute right-0 z-10 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-md border border-surface-border bg-surface-raised p-3 shadow-xl">
           <label className="mb-1 block text-xs text-slate-400">ملاحظات:</label>
           <TextArea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="اختياري" />
           {error && <div className="mt-2 text-xs text-danger">{error}</div>}

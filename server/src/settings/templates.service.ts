@@ -1,6 +1,6 @@
 import { getSetting, setSetting } from "./settings.service.js";
 
-export type TemplateKey = "staff_login" | "staff_logout" | "warning" | "ban";
+export type TemplateKey = "staff_login" | "staff_logout" | "warning" | "ban" | "warning_revoked" | "ban_revoked";
 
 export interface TemplateDefinition {
   key: TemplateKey;
@@ -63,15 +63,43 @@ export const TEMPLATE_DEFINITIONS: Record<TemplateKey, TemplateDefinition> = {
     key: "ban",
     label: "Ban Issued",
     description: "Posted to the ban log channel whenever a ban is created.",
-    placeholders: ["identifier", "playerMention", "duration", "reason", "date", "staffMention", "staffRole"],
+    // identifierLine is the fully-formed "Player id" line — it's already
+    // empty when staff didn't type a FiveM ID (see banLogMessage), so the
+    // template just needs to reference it, not decide whether to show it.
+    placeholders: ["identifierLine", "identifier", "playerMention", "playerName", "duration", "reason", "date", "staffMention", "staffName", "staffRole"],
     default: [
-      "**Player id:** `{{identifier}}`",
-      "**Player:** `{{playerMention}}`",
-      "**Band:** `{{duration}}`",
+      "{{identifierLine}}**Player:** {{playerMention}} `{{playerName}}`",
       "**Reason:** `{{reason}}`",
       "**Date:** `{{date}}`",
       "**Band time:** `{{duration}}`",
-      "**Censorship name:** `{{staffMention}} ({{staffRole}})`",
+      "**Censorship name:** {{staffMention}} `{{staffName}}` ({{staffRole}})",
+    ].join("\n"),
+  },
+  warning_revoked: {
+    key: "warning_revoked",
+    label: "Warning Revoked",
+    description: "Posted to the warning log channel whenever a warning is revoked.",
+    placeholders: ["playerRef", "warningNumber", "revokeReason", "staffMention", "staffName", "staffRole", "revokedDate"],
+    default: [
+      "**تم إلغاء الورنيج**",
+      "**اسم اللاعب:** `{{playerRef}}`",
+      "**رقم الورنيج:** `warning {{warningNumber}}`",
+      "**سبب الإلغاء:** `{{revokeReason}}`",
+      "**بواسطة:** {{staffMention}} `{{staffName}}` ({{staffRole}})",
+      "**التاريخ:** `{{revokedDate}}`",
+    ].join("\n"),
+  },
+  ban_revoked: {
+    key: "ban_revoked",
+    label: "Ban Revoked",
+    description: "Posted to the ban log channel whenever a ban is revoked.",
+    placeholders: ["playerMention", "playerName", "revokeReason", "staffMention", "staffName", "staffRole", "revokedDate"],
+    default: [
+      "**Ban Revoked**",
+      "**Player:** {{playerMention}} `{{playerName}}`",
+      "**Reason:** `{{revokeReason}}`",
+      "**By:** {{staffMention}} `{{staffName}}` ({{staffRole}})",
+      "**Date:** `{{revokedDate}}`",
     ].join("\n"),
   },
 };

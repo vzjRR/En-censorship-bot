@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import request from "supertest";
-import { buildApp, seedDefaultRoles, createStaffMember, sessionUserFor, loginAs } from "./helpers.js";
+import { buildApp, seedDefaultRoles, createStaffMember, sessionUserFor, loginAs, startDutyFor } from "./helpers.js";
 
 // Minimal buffer satisfying the PNG magic-byte signature check in
 // evidence/validate.ts — content beyond the header is irrelevant to us.
@@ -14,10 +14,34 @@ async function loginStaff(app: ReturnType<typeof buildApp>) {
     agent,
     sessionUserFor(staff, "staff", "Staff", ["dashboard.view", "duty.toggle", "bans.view", "bans.create"]),
   );
+  await startDutyFor(agent, csrf);
   return { agent, csrf, staff };
 }
 
 describe("Ban system", () => {
+  it("rejects issuing a ban when the staff member is not on duty", async () => {
+    const app = buildApp();
+    const roles = await seedDefaultRoles();
+    const staff = await createStaffMember(roles.staff);
+    const agent = request.agent(app);
+    const csrf = await loginAs(
+      agent,
+      sessionUserFor(staff, "staff", "Staff", ["dashboard.view", "duty.toggle", "bans.view", "bans.create"]),
+    );
+    // Deliberately not calling startDutyFor() here.
+
+    const res = await agent
+      .post("/api/bans")
+      .set("X-CSRF-Token", csrf)
+      .field("playerName", "OffDutyPlayer")
+      .field("reason", "RDM")
+      .field("durationType", "6_hours")
+      .attach("evidence", FAKE_PNG, { filename: "proof.png", contentType: "image/png" });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe("not_on_duty");
+  });
+
   it("rejects a ban with no evidence attached", async () => {
     const app = buildApp();
     const { agent, csrf } = await loginStaff(app);
@@ -124,7 +148,8 @@ describe("Ban system", () => {
     const roles = await seedDefaultRoles();
     const manager = await createStaffMember(roles.manager);
     const agent = request.agent(app);
-    const csrf = await loginAs(agent, sessionUserFor(manager, "manager", "Manager", ["bans.view", "bans.create", "bans.revoke"]));
+    const csrf = await loginAs(agent, sessionUserFor(manager, "manager", "Manager", ["duty.toggle", "bans.view", "bans.create", "bans.revoke"]));
+    await startDutyFor(agent, csrf);
 
     const created = await agent
       .post("/api/bans")

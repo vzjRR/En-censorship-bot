@@ -43,7 +43,7 @@ describe("Staff duty sessions (login/logout)", () => {
     const roles = await seedDefaultRoles();
     const staff = await createStaffMember(roles.staff);
     const { startDuty } = await import("../src/staff/sessions.service.js");
-    await startDuty({ staffId: staff.id, discordUserId: staff.discordUserId, displayName: staff.displayName, roleName: "Staff", discordRoleName: null });
+    await startDuty({ staffId: staff.id, discordUserId: staff.discordUserId, displayName: staff.displayName, roleName: "Staff", discordRoleId: null });
 
     // Simulate a fresh process by building a brand new app/agent with no
     // in-memory state carried over — only the database is shared.
@@ -58,9 +58,9 @@ describe("Staff duty sessions (login/logout)", () => {
     const roles = await seedDefaultRoles();
     const staff = await createStaffMember(roles.staff);
     const { startDuty, DutyConflictError } = await import("../src/staff/sessions.service.js");
-    await startDuty({ staffId: staff.id, discordUserId: staff.discordUserId, displayName: staff.displayName, roleName: "Staff", discordRoleName: null });
+    await startDuty({ staffId: staff.id, discordUserId: staff.discordUserId, displayName: staff.displayName, roleName: "Staff", discordRoleId: null });
     await expect(
-      startDuty({ staffId: staff.id, discordUserId: staff.discordUserId, displayName: staff.displayName, roleName: "Staff", discordRoleName: null }),
+      startDuty({ staffId: staff.id, discordUserId: staff.discordUserId, displayName: staff.displayName, roleName: "Staff", discordRoleId: null }),
     ).rejects.toThrow(DutyConflictError);
   });
 });

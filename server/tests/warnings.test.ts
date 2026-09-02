@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import request from "supertest";
-import { buildApp, seedDefaultRoles, createStaffMember, sessionUserFor, loginAs } from "./helpers.js";
+import { buildApp, seedDefaultRoles, createStaffMember, sessionUserFor, loginAs, startDutyFor, putOnDuty } from "./helpers.js";
 
 async function loginStaff(app: ReturnType<typeof buildApp>) {
   const roles = await seedDefaultRoles();
@@ -10,6 +10,7 @@ async function loginStaff(app: ReturnType<typeof buildApp>) {
     agent,
     sessionUserFor(staff, "staff", "Staff", ["dashboard.view", "duty.toggle", "warnings.view", "warnings.create"]),
   );
+  await startDutyFor(agent, csrf);
   return { agent, csrf, staff };
 }
 
@@ -32,6 +33,28 @@ describe("Warning system", () => {
     // Bot isn't connected in tests, so the log message is expected to fail
     // without corrupting the created record.
     expect(res.body.warning.discordLogStatus).toBe("FAILED");
+  });
+
+  it("rejects issuing a warning when the staff member is not on duty", async () => {
+    const app = buildApp();
+    const roles = await seedDefaultRoles();
+    const staff = await createStaffMember(roles.staff);
+    const agent = request.agent(app);
+    const csrf = await loginAs(
+      agent,
+      sessionUserFor(staff, "staff", "Staff", ["dashboard.view", "duty.toggle", "warnings.view", "warnings.create"]),
+    );
+    // Deliberately not calling startDutyFor() here.
+
+    const res = await agent
+      .post("/api/warnings")
+      .set("X-CSRF-Token", csrf)
+      .field("playerName", "OffDutyPlayer")
+      .field("reason", "RDM")
+      .field("durationType", "7_days");
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe("not_on_duty");
   });
 
   it("rejects a warning with a missing reason", async () => {
@@ -89,6 +112,7 @@ describe("Warning system", () => {
   it("expires an overdue ACTIVE warning via the server-side sweep, not a frontend timer", async () => {
     const roles = await seedDefaultRoles();
     const staff = await createStaffMember(roles.staff);
+    await putOnDuty(staff);
     const { createWarning } = await import("../src/moderation/warnings/warnings.service.js");
     const { db } = await import("../src/database/client.js");
     const { warnings } = await import("../src/database/schema/index.js");
@@ -113,6 +137,7 @@ describe("Warning system", () => {
         permissions: [],
         discordRoleIds: [],
         discordRoleName: null,
+      discordRoleId: null,
         rolesSyncedAt: new Date().toISOString(),
       },
     );
@@ -135,8 +160,9 @@ describe("Warning system", () => {
     const agent = request.agent(app);
     const csrf = await loginAs(
       agent,
-      sessionUserFor(manager, "manager", "Manager", ["warnings.view", "warnings.create", "warnings.revoke"]),
+      sessionUserFor(manager, "manager", "Manager", ["duty.toggle", "warnings.view", "warnings.create", "warnings.revoke"]),
     );
+    await startDutyFor(agent, csrf);
 
     const created = await agent
       .post("/api/warnings")

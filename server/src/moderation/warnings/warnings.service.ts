@@ -7,9 +7,10 @@ import { generateModerationCode } from "../../ids/idGenerator.js";
 import { storeEvidenceFiles, type EvidenceFileInput } from "../../evidence/storage.js";
 import { sendChannelMessage } from "../../bot/services/logService.js";
 import { grantMemberRole, revokeMemberRole } from "../../bot/services/memberService.js";
-import { warningLogMessage } from "../../bot/services/messageTemplates.js";
+import { warningLogMessage, warningRevokedMessage } from "../../bot/services/messageTemplates.js";
 import { getEffectiveChannels } from "../../settings/runtimeConfig.service.js";
 import { getPunishmentRolesConfig, findWarningRoleRule } from "../../settings/punishmentRoles.service.js";
+import { assertOnDuty } from "../dutyGuard.js";
 import { recordAuditLog, AUDIT_ACTIONS } from "../../audit/audit.service.js";
 import { nowInDisplayZone } from "../../utils/timezone.js";
 import type { AuthenticatedSessionUser } from "../../types/session.js";
@@ -33,6 +34,9 @@ export async function suggestWarningNumber(playerId: string): Promise<{ previous
 }
 
 export async function createWarning(input: CreateWarningInput, actor: AuthenticatedSessionUser): Promise<Warning> {
+  // Must be on duty ("دخول الرقابة") to issue a warning — checked first, before any other work.
+  await assertOnDuty(actor.discordUserId);
+
   if (input.idempotencyKey) {
     const existing = await db.query.warnings.findFirst({ where: eq(warnings.idempotencyKey, input.idempotencyKey) });
     if (existing) return existing;
@@ -170,7 +174,7 @@ export async function createWarning(input: CreateWarningInput, actor: Authentica
 export interface RevokeWarningInput {
   warningId: string;
   reason: string;
-  actor: Pick<AuthenticatedSessionUser, "discordUserId" | "displayName" | "staffId">;
+  actor: Pick<AuthenticatedSessionUser, "discordUserId" | "displayName" | "staffId" | "roleName" | "discordRoleName">;
 }
 
 export async function revokeWarning(input: RevokeWarningInput): Promise<Warning> {
@@ -199,10 +203,27 @@ export async function revokeWarning(input: RevokeWarningInput): Promise<Warning>
     metadata: { reason: input.reason, warningCode: existing.warningCode },
   });
 
-  if (existing.punishmentRoleId) {
-    const player = await findPlayerById(existing.playerId);
-    if (player?.discordUserId) await revokeMemberRole(player.discordUserId, existing.punishmentRoleId);
+  const player = await findPlayerById(existing.playerId);
+
+  if (existing.punishmentRoleId && player?.discordUserId) {
+    await revokeMemberRole(player.discordUserId, existing.punishmentRoleId);
   }
+
+  // Notification step — allowed to fail without affecting the revocation itself.
+  const channels = await getEffectiveChannels();
+  await sendChannelMessage(
+    channels.warningLog,
+    await warningRevokedMessage({
+      playerDiscordId: player?.discordUserId ?? null,
+      playerName: player?.playerName ?? "Unknown",
+      warningNumber: existing.warningNumber,
+      revokeReason: input.reason,
+      revokedAt: updated.revokedAt ?? new Date(),
+      staffDiscordId: input.actor.discordUserId,
+      staffName: input.actor.displayName,
+      staffRole: input.actor.discordRoleName ?? input.actor.roleName,
+    }),
+  );
 
   return updated;
 }

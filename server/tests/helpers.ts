@@ -1,7 +1,7 @@
 import request from "supertest";
 import { createApp } from "../src/api/app.js";
 import { db } from "../src/database/client.js";
-import { staffRoles, staffMembers } from "../src/database/schema/index.js";
+import { staffRoles, staffMembers, staffSessions } from "../src/database/schema/index.js";
 import { DEFAULT_ROLE_SEEDS, PLATFORM_OWNER_ROLE_KEY, ALL_PERMISSIONS } from "../src/auth/permissions.js";
 import type { AuthenticatedSessionUser } from "../src/types/session.js";
 
@@ -74,6 +74,7 @@ export function sessionUserFor(
     permissions,
     discordRoleIds: [],
     discordRoleName: null,
+    discordRoleId: null,
     rolesSyncedAt: new Date().toISOString(),
   };
 }
@@ -82,4 +83,20 @@ export function sessionUserFor(
 export async function loginAs(agent: ReturnType<typeof request.agent>, user: AuthenticatedSessionUser): Promise<string> {
   const res = await agent.post("/api/__test__/set-session").send({ user }).expect(200);
   return res.body.csrfToken as string;
+}
+
+/** Starts duty for an already-logged-in agent via the real HTTP endpoint (requires duty.toggle in its session). Warnings/bans can only be issued while on duty. */
+export async function startDutyFor(agent: ReturnType<typeof request.agent>, csrf: string): Promise<void> {
+  await agent.post("/api/staff/duty/login").set("X-CSRF-Token", csrf).send({}).expect(201);
+}
+
+/** Directly inserts an ACTIVE staff_sessions row — for tests that call createWarning/createBan on the service directly, bypassing HTTP. */
+export async function putOnDuty(staff: { id: string; discordUserId: string; displayName: string }): Promise<void> {
+  await db.insert(staffSessions).values({
+    staffId: staff.id,
+    staffUserId: staff.discordUserId,
+    staffName: staff.displayName,
+    staffRole: "Staff",
+    status: "ACTIVE",
+  });
 }
